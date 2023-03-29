@@ -59,14 +59,14 @@ public class Thrift
     @Column(nullable = true)
     private long no_of_thrifters;
 
-    @OneToOne(mappedBy = "thrifts")
+    @OneToOne(mappedBy = "thrift")
     private Generated_account generated_account;
-
-    @UpdateTimestamp
-    private LocalDateTime updated_on;
 
     @CreationTimestamp
     private LocalDateTime created_on;
+
+    @UpdateTimestamp
+    private LocalDateTime updated_on;
 
     private LocalDate thrift_start;
 
@@ -84,14 +84,5 @@ public class Thrift
 
     @Enumerated(EnumType.STRING)
     private Lifecycle cycle;
-
-//    public void settingTicket(long lng)
-//    {
-////        Long lng = this.id;
-//        this.setTicket(this.thriftName + "." + ""+lng);
-//        System.out.println(lng);
-//        System.out.println(""+lng);
-//
-//    }
 
 }

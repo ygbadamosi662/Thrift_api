@@ -66,6 +66,12 @@ public class Utility
         return thrift_end;
     }
 
+//    public LocalDate get_nxt(Thrift thrift)
+//    {
+////        gets the next thrift date
+//
+//    }
+
     public boolean duration_chk(Thrift thrift)
     {
 //        the longest a thrift should last is 52 weeks
@@ -162,10 +168,6 @@ public class Utility
         {
             Thrift thrift = each.getThrift();
             all_thrift.add(thrift);
-//            if(!(all_thrift.contains(thrift)))
-//            {
-//                all_thrift.add(thrift);
-//            }
         }
 
         for(Thrift each : all_thrift)

@@ -8,8 +8,12 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +72,12 @@ public class User implements UserDetails
     @OneToOne
     @JoinColumn(name = "acc_details_id",nullable = true)
     private User_acc_details user_acc_details;
+
+    @CreationTimestamp
+    private LocalDateTime created_on;
+
+    @UpdateTimestamp
+    private LocalDateTime updated_on;
 
     public void settingThriftList (List<Long> longList)
     {

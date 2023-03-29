@@ -33,7 +33,7 @@ public class Generated_account
 
     @OneToOne
     @JoinColumn(name = "thrift_id")
-    private Thrift thrifts;
+    private Thrift thrift;
 
     @CreationTimestamp
     private LocalDateTime created_on;

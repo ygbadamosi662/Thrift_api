@@ -114,7 +114,7 @@ public class ThriftController
         System.out.println(organizer.getThrift_list());
 
 
-        return new ResponseEntity<>("thrift created succesfully", HttpStatus.OK);
+        return new ResponseEntity<>(new ThriftResponseDto(thrift), HttpStatus.OK);
     }
 
     @PostMapping("/add")

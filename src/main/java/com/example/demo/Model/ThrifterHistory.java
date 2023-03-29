@@ -1,17 +1,19 @@
 package com.example.demo.Model;
 
+import com.example.demo.Dtos.ResponseDto;
 import com.example.demo.Enums.Consent;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @Entity
-public class ThrifterHistory
+public class ThrifterHistory extends ResponseDto
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,7 +25,11 @@ public class ThrifterHistory
     private Thrift thrift;
 
     @CreationTimestamp
-    private LocalDateTime completed_on;
+    private LocalDateTime created_on;
+
+    @UpdateTimestamp
+    private LocalDateTime updated_on;
+
     @ManyToOne(cascade= CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private User user;
