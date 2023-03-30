@@ -2,7 +2,7 @@ package com.example.demo.Model;
 
 import com.example.demo.Enums.Gender;
 import com.example.demo.Enums.Role;
-import com.example.demo.Repositories.ThriftsRepository;
+import com.example.demo.Repositories.AccountRepository;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -16,15 +16,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 
 @Getter
 @Setter
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 @Entity
-public class User implements UserDetails
+public class User extends Beneficiary implements UserDetails
 {
 //    get and set thrift_list with gettingThrift_list() and settimgThrift_list() respectively
     @Id
@@ -69,15 +68,20 @@ public class User implements UserDetails
     @OneToMany(mappedBy = "user")
     private List<Thrift_hub> thrift_hub;
 
-    @OneToOne
-    @JoinColumn(name = "acc_details_id",nullable = true)
-    private User_acc_details user_acc_details;
+
+    private long acc_id = 0;
 
     @CreationTimestamp
     private LocalDateTime created_on;
 
     @UpdateTimestamp
     private LocalDateTime updated_on;
+
+    public User()
+    {
+        this.setsAccount();
+        this.setsClassName();
+    }
 
     public void settingThriftList (List<Long> longList)
     {
@@ -128,6 +132,20 @@ public class User implements UserDetails
         }
 
         return list;
+    }
+
+    public void setsAccount()
+    {
+        Optional<Account> byId = getAccRepo().findById(this.acc_id);
+        if(byId.isPresent())
+        {
+            this.setAccount(byId.get());
+        }
+    }
+
+    public void setsClassName()
+    {
+        this.setClassName(User.class.getSimpleName());
     }
 
 //    public Map<String, String> getHash()

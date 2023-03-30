@@ -23,13 +23,23 @@ public class Transaction
 
     private long amount;
 
-    private long debitted_acc_id;
+    @ManyToOne(cascade= CascadeType.ALL)
+    @JoinColumn(name = "debit_acc_id")
+    private Account debit_acc;
 
-    private long creditted_acc_id;
+    @ManyToOne(cascade= CascadeType.ALL)
+    @JoinColumn(name = "credit_acc_id")
+    private Account credit_acc;
 
-    private long info_id;
+    @OneToOne(mappedBy = "transaction")
+    private Thrift_hub thriftHub;
+
+    @OneToOne(mappedBy = "transaction")
+    private ThePot pot;
 
     @Enumerated(EnumType.STRING)
     private TypeOf typeOf;
+
+
 
 }

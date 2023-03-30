@@ -10,8 +10,6 @@ import java.time.format.DateTimeFormatter;
 @Setter
 public class ResponseDto
 {
-    private String className;
-
     private String dateFormat = "MM dd, YYYY";
 
     public String getStringDate(LocalDate date)

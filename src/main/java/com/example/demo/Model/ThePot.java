@@ -32,9 +32,9 @@ public class ThePot
     @CreationTimestamp
     private LocalDate collection_date;
 
-    private long transaction_id;
+//    private long transaction_id;
 
-//    @OneToOne
-//    @JoinColumn(name = "transaction_id")
-//    private Transaction transaction;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "transaction_id", referencedColumnName = "transaction_id")
+    private Transaction transaction;
 }

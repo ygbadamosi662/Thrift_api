@@ -1,12 +1,9 @@
 package com.example.demo.Dtos;
 
-import com.example.demo.Model.Generated_account;
-import com.example.demo.Model.Thrift;
 import com.example.demo.Model.Thrift_hub;
-import com.example.demo.Model.User;
-import jakarta.persistence.*;
+import com.example.demo.Model.Transaction;
 
-public class Thrift_hubResponseDto
+public class Thrift_hubResponseDto extends ResponseDto
 {
     private long id;
 
@@ -14,7 +11,7 @@ public class Thrift_hubResponseDto
 
     private ThriftResponseDto thrift;
 
-    private long transaction_id;
+    private TransactionResponseDto transaction;
 
     public Thrift_hubResponseDto(){}
 
@@ -23,6 +20,6 @@ public class Thrift_hubResponseDto
         this.id = hub.getId();
         this.user = new UserResponseDto(hub.getUser());
         this.thrift = new ThriftResponseDto(hub.getThrift());
-        this.transaction_id = hub.getTransaction_id();
+        this.transaction = new TransactionResponseDto(hub.getTransaction());
     }
 }

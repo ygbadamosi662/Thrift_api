@@ -2,6 +2,7 @@ package com.example.demo.Dtos;
 
 import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Term;
+import com.example.demo.Model.Account;
 import com.example.demo.Model.Thrift;
 import com.example.demo.Model.User;
 import jakarta.persistence.*;
@@ -30,7 +31,7 @@ public class ThriftResponseDto extends ResponseDto
 
     private long collection_index;
 
-    private GenAccResponseDto generatedAccount;
+    private AccountResponseDto account;
 
     @Enumerated(EnumType.STRING)
     public Term term;
@@ -62,7 +63,7 @@ public class ThriftResponseDto extends ResponseDto
         this.cycle = thrift.getCycle();
         this.organizer = new UserResponseDto(thrift.getOrganizer());
         this.per_term_amnt = thrift.getPer_term_amnt();
-        this.generatedAccount = new GenAccResponseDto(thrift.getGenerated_account());
+        this.account = new AccountResponseDto(thrift.getAccount());
         this.term = thrift.getTerm();
         this.name = thrift.getThriftName();
         this.ticket = thrift.getTicket();

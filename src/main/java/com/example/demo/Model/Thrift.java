@@ -15,12 +15,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Getter
 @Setter
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 @Entity
-public class Thrift
+public class Thrift extends Beneficiary
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,8 +60,7 @@ public class Thrift
     @Column(nullable = true)
     private long no_of_thrifters;
 
-    @OneToOne(mappedBy = "thrift")
-    private Generated_account generated_account;
+    private long acc_id = 0;
 
     @CreationTimestamp
     private LocalDateTime created_on;
@@ -84,5 +84,25 @@ public class Thrift
 
     @Enumerated(EnumType.STRING)
     private Lifecycle cycle;
+
+    public Thrift()
+    {
+        this.setsAccount();
+        this.setsClassName();
+    }
+
+    public void setsAccount()
+    {
+        Optional<Account> byId = getAccRepo().findById(this.acc_id);
+        if(byId.isPresent())
+        {
+            this.setAccount(byId.get());
+        }
+    }
+
+    public void setsClassName()
+    {
+        this.setClassName(Thrift.class.getSimpleName());
+    }
 
 }

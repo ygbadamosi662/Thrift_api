@@ -21,6 +21,8 @@ public class Thrift_hub
     @JoinColumn( name = "thrift_id")
     private Thrift thrift;
 
-    private long transaction_id;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "transaction_id", referencedColumnName = "transaction_id")
+    private Transaction transaction;
 
 }

@@ -5,9 +5,6 @@ import com.example.demo.Enums.Role;
 import com.example.demo.Model.*;
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class UserResponseDto extends ResponseDto
 {
 
@@ -27,7 +24,7 @@ public class UserResponseDto extends ResponseDto
 
     private String phone;
 
-    private User_Acc_DetailsResponseDto user_acc_details;
+    private AccountResponseDto account;
 
     public UserResponseDto(){}
 
@@ -41,6 +38,6 @@ public class UserResponseDto extends ResponseDto
         this.gender = user.getGender();
         this.email = user.getEmail();
         this.phone = user.getPhone();
-        this.user_acc_details = new User_Acc_DetailsResponseDto(user.getUser_acc_details());
+        this.account = new AccountResponseDto(user.getAccount());
     }
 }

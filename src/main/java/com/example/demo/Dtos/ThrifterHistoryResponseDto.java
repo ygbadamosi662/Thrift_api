@@ -29,6 +29,5 @@ public class ThrifterHistoryResponseDto extends ResponseDto
         this.thrift = new ThriftResponseDto(history.getThrift());
         this.user = new UserResponseDto(history.getUser());
         this.consent = history.getConsent();
-
     }
 }
