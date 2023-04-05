@@ -67,9 +67,12 @@ public class User extends Beneficiary implements UserDetails
 
     @OneToMany(mappedBy = "user")
     private List<Thrift_hub> thrift_hub;
+    
+//    private long acc_id = 0;
 
-
-    private long acc_id = 0;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "account_id", referencedColumnName = "acc_id")
+    private Account userAccount;
 
     @CreationTimestamp
     private LocalDateTime created_on;
@@ -77,9 +80,11 @@ public class User extends Beneficiary implements UserDetails
     @UpdateTimestamp
     private LocalDateTime updated_on;
 
-    public User()
+    public User(){}
+
+    public User(User user)
     {
-        this.setsAccount();
+//        this.setsAccount();
         this.setsClassName();
     }
 
@@ -132,15 +137,6 @@ public class User extends Beneficiary implements UserDetails
         }
 
         return list;
-    }
-
-    public void setsAccount()
-    {
-        Optional<Account> byId = getAccRepo().findById(this.acc_id);
-        if(byId.isPresent())
-        {
-            this.setAccount(byId.get());
-        }
     }
 
     public void setsClassName()

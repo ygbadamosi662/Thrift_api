@@ -50,6 +50,7 @@ public class Thrift extends Beneficiary
 
     @ManyToOne(cascade= CascadeType.ALL)
     @JoinColumn(name = "collector_id")
+    @Nullable
     private User collector;
 
     @Nullable
@@ -85,20 +86,26 @@ public class Thrift extends Beneficiary
     @Enumerated(EnumType.STRING)
     private Lifecycle cycle;
 
-    public Thrift()
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "account_id", referencedColumnName = "acc_id")
+    private Account thriftAccount;
+
+    public Thrift(){}
+
+    public Thrift(Thrift thrift)
     {
-        this.setsAccount();
+//        this.setsAccount();
         this.setsClassName();
     }
 
-    public void setsAccount()
-    {
-        Optional<Account> byId = getAccRepo().findById(this.acc_id);
-        if(byId.isPresent())
-        {
-            this.setAccount(byId.get());
-        }
-    }
+//    public void setsAccount()
+//    {
+//        Optional<Account> byId = getAccRepo().findById(this.acc_id);
+//        if(byId.isPresent())
+//        {
+//            this.setAccount(byId.get());
+//        }
+//    }
 
     public void setsClassName()
     {

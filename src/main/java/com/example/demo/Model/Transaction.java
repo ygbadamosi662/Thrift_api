@@ -18,10 +18,10 @@ public class Transaction
     @Column(name="transaction_id")
     private long id;
 
-    @CreationTimestamp
-    private LocalDateTime paid_on;
-
     private long amount;
+
+    @CreationTimestamp
+    private LocalDateTime made_on;
 
     @ManyToOne(cascade= CascadeType.ALL)
     @JoinColumn(name = "debit_acc_id")

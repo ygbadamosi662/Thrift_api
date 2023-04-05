@@ -26,8 +26,28 @@ public class ThrifterHistoryResponseDto extends ResponseDto
     public ThrifterHistoryResponseDto(ThrifterHistory history)
     {
         this.id = history.getId();
-        this.thrift = new ThriftResponseDto(history.getThrift());
-        this.user = new UserResponseDto(history.getUser());
         this.consent = history.getConsent();
+    }
+
+    public void setThrift(Thrift thrift)
+    {
+        if(thrift != null)
+        {
+            this.thrift = new ThriftResponseDto(thrift);
+        }
+    }
+
+    public void setUser(User user)
+    {
+        if(user != null)
+        {
+            this.user = new UserResponseDto(user);
+        }
+    }
+
+    public void setAll(ThrifterHistory history)
+    {
+        this.setThrift(history.getThrift());
+        this.setUser(history.getUser());
     }
 }

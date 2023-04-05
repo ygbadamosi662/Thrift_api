@@ -8,11 +8,12 @@ import com.example.demo.Model.Thrift;
 import com.example.demo.Model.User;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
+import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-
+@Getter
 public class AccountResponseDto extends ResponseDto
 {
     private long id;
@@ -40,8 +41,8 @@ public class AccountResponseDto extends ResponseDto
         this.acc_name = account.getAcc_name();
         this.account_type = account.getAccount_type();
         this.side = account.getSide();
-        this.setsBen(account);
     }
+
 
     public void setsBen(Account account)
     {

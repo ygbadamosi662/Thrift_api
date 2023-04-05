@@ -2,6 +2,7 @@ package com.example.demo.Controllers;
 
 import com.example.demo.Dtos.LoginDto;
 import com.example.demo.Dtos.UserDto;
+import com.example.demo.Dtos.UserResponseDto;
 import com.example.demo.Model.Thrift;
 import com.example.demo.Model.User;
 import com.example.demo.Repositories.ThriftsRepository;
@@ -30,9 +31,6 @@ public class UserController
 //    create a virtual bank account generator,name of account being thrift string id
     private final AuthenticationManager authenticationManager;
 
-//    private User user;
-
-    private final ThriftsRepository thriftsRepository;
     private final JwtService jwtService;
 
     private final PasswordEncoder passwordEncoder;
@@ -91,18 +89,12 @@ public class UserController
         Map <String,Object> accessToken = new HashMap<>();
         accessToken.put("jwt",jwt);
         accessToken.put("msg","Login succesful");
-        return ResponseEntity.ok(accessToken);
+        UserResponseDto dto = new UserResponseDto(user);
+        dto.setJwt(jwt);
+        dto.setAccount(user.getUserAccount());
+        return ResponseEntity.ok(dto);
     }
 
-    private List<Thrift> getThrift_list(User user)
-    {
-        List<Thrift> thriftList = new ArrayList<>();
-        user.gettingThrift_list().forEach( (id)-> {
-            thriftList.add(thriftsRepository.findById(id).get());
-        });
-
-        return thriftList;
-    }
     private static Map<String, Object> setExtraClaims(User user)
     {
         Map <String, Object> extraClaims = new HashMap<>();

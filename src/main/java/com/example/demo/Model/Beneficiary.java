@@ -10,11 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Setter
 public class Beneficiary
 {
-    @Autowired
-    private AccountRepository accRepo;
-
     private String className;
-
-    private Account account;
 
 }

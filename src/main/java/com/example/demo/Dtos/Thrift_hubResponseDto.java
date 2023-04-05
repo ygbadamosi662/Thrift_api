@@ -1,7 +1,11 @@
 package com.example.demo.Dtos;
 
+import com.example.demo.Model.Thrift;
 import com.example.demo.Model.Thrift_hub;
 import com.example.demo.Model.Transaction;
+import com.example.demo.Model.User;
+
+import java.time.LocalDate;
 
 public class Thrift_hubResponseDto extends ResponseDto
 {
@@ -11,6 +15,10 @@ public class Thrift_hubResponseDto extends ResponseDto
 
     private ThriftResponseDto thrift;
 
+    private String date;
+
+    private long index;
+
     private TransactionResponseDto transaction;
 
     public Thrift_hubResponseDto(){}
@@ -18,8 +26,38 @@ public class Thrift_hubResponseDto extends ResponseDto
     public Thrift_hubResponseDto(Thrift_hub hub)
     {
         this.id = hub.getId();
-        this.user = new UserResponseDto(hub.getUser());
-        this.thrift = new ThriftResponseDto(hub.getThrift());
-        this.transaction = new TransactionResponseDto(hub.getTransaction());
+        this.index = hub.getThrift_index();
     }
+
+    public void setThrift(Thrift thrift)
+    {
+        if(thrift != null)
+        {
+            this.thrift = new ThriftResponseDto(thrift);
+        }
+    }
+
+    public void setUser(User user)
+    {
+        if(user != null)
+        {
+            this.user = new UserResponseDto(user);
+        }
+    }
+
+    public void setDate(LocalDate date)
+    {
+        if(date != null)
+        {
+            this.date = this.getStringDate(date);
+        }
+    }
+
+    public void setAll(Thrift_hub hub)
+    {
+        this.setDate(hub.getDate());
+        this.setThrift(hub.getThrift());
+        this.setUser(hub.getUser());
+    }
+
 }

@@ -13,7 +13,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 @Getter
-@Setter
 public class ThriftResponseDto extends ResponseDto
 {
 
@@ -58,19 +57,59 @@ public class ThriftResponseDto extends ResponseDto
         this.collection_amount = thrift.getCollection_amount();
         this.collection_available = thrift.getCollection_available();
         this.collection_index = thrift.getCollection_index();
-        this.collector = new UserResponseDto(thrift.getCollector());
         this.no_of_thrifters = thrift.getNo_of_thrifters();
         this.cycle = thrift.getCycle();
-        this.organizer = new UserResponseDto(thrift.getOrganizer());
         this.per_term_amnt = thrift.getPer_term_amnt();
-        this.account = new AccountResponseDto(thrift.getAccount());
         this.term = thrift.getTerm();
         this.name = thrift.getThriftName();
         this.ticket = thrift.getTicket();
-        this.next_thrift_date = this.getStringDate(thrift.getNext_thrift_date());
-        this.thrift_end = this.getStringDate(thrift.getThrift_end());
-        this.thrift_start = this.getStringDate(thrift.getThrift_start());
         this.id = thrift.getId();
+    }
+
+    public void setOrganizer(User user)
+    {
+        System.out.println(user);
+        if(user != null)
+        {
+            this.organizer = new UserResponseDto(user);
+        }
+    }
+
+    public void setCollector(User user)
+    {
+        if(user != null)
+        {
+            this.collector = new UserResponseDto(user);
+        }
+    }
+
+    public void setAccount(Account acc)
+    {
+        if(acc != null)
+        {
+            this.account = new AccountResponseDto(acc);
+        }
+    }
+
+    public void setThrift_dates(Thrift thrift)
+    {
+        if(thrift != null)
+        {
+            this.thrift_start = this.getStringDate(thrift.getThrift_start());
+            this.thrift_end = this.getStringDate(thrift.getThrift_end());
+            if(thrift.getNext_thrift_date() != null)
+            {
+                this.next_thrift_date = this.getStringDate(thrift.getNext_thrift_date());
+            }
+        }
+    }
+
+    public void setAllWeirdAssClasses(Thrift thrift)
+    {
+        this.setAccount(thrift.getThriftAccount());
+        this.setOrganizer(thrift.getOrganizer());
+        this.setCollector(thrift.getCollector());
+        this.setThrift_dates(thrift);
     }
 
 }

@@ -2,12 +2,15 @@ package com.example.demo.Model;
 
 import com.example.demo.Enums.Account_type;
 import com.example.demo.Enums.Side;
+import com.example.demo.Repositories.ThriftsRepository;
+import com.example.demo.Repositories.UserRepository;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -43,10 +46,27 @@ public class Account extends Bank
     @Nullable
     private String benUnique;
 
-//    public Account(){}
-    public Account()
+    @OneToOne(mappedBy = "userAccount")
+    private User userBen;
+
+    @OneToOne(mappedBy = "thriftAccount")
+    private Thrift thriftBen;
+
+    public Account(){}
+
+    public Account(User user, Thrift thrift)
     {
-        this.setsBen();
+        user = this.userBen;
+        thrift = this.thriftBen;
+
+        if(user.equals(null))
+        {
+            this.setBen(thrift);
+        }
+        else if(thrift.equals(null))
+        {
+            this.setBen(user);
+        }
         this.setsClassName();
     }
     public void setsClassName()
@@ -54,20 +74,4 @@ public class Account extends Bank
         this.setClassName(Account.class.getSimpleName());
     }
 
-    public void setsBen()
-    {
-        Optional<User> byEmail = this.getUserRepo().findByEmail(this.benUnique);
-        if(byEmail.isPresent())
-        {
-            this.setBen(byEmail.get());
-        }
-        else
-        {
-            Optional<Thrift> byTicket = this.getThriftRepo().findByTicket(this.benUnique);
-            if(byTicket.isPresent())
-            {
-                this.setBen(byTicket.get());
-            }
-        }
-    }
 }

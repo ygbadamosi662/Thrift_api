@@ -4,18 +4,22 @@ import com.example.demo.Enums.TypeOf;
 import com.example.demo.Model.Account;
 import com.example.demo.Model.Transaction;
 import jakarta.persistence.*;
+import lombok.Getter;
 
+import java.time.LocalDateTime;
+
+@Getter
 public class TransactionResponseDto extends ResponseDto
 {
     private long id;
 
-    private String paid_on;
-
     private long amount;
 
-    private Account debit_acc;
+    private AccountResponseDto debit_acc;
 
-    private Account credit_acc;
+    private AccountResponseDto credit_acc;
+
+    private String dateTime;
 
     @Enumerated(EnumType.STRING)
     private TypeOf typeOf;
@@ -26,8 +30,38 @@ public class TransactionResponseDto extends ResponseDto
     {
         this.id = transaction.getId();
         this.amount = transaction.getAmount();
-        this.debit_acc = transaction.getDebit_acc();
-        this.credit_acc = transaction.getCredit_acc();
         this.typeOf = transaction.getTypeOf();
     }
+
+    public void setDebit_acc(Account acc)
+    {
+        if(acc != null)
+        {
+            this.debit_acc = new AccountResponseDto(acc);
+        }
+    }
+
+    public void setCredit_acc(Account acc)
+    {
+        if(acc != null)
+        {
+            this.credit_acc = new AccountResponseDto(acc);
+        }
+    }
+
+    public void setDateTime(LocalDateTime dateTime)
+    {
+        if(dateTime != null)
+        {
+            this.dateTime = this.getStringDateTime(dateTime);
+        }
+    }
+
+    public void setAllWeirdAssClasses(Transaction trans)
+    {
+        this.setCredit_acc(trans.getCredit_acc());
+        this.setDebit_acc(trans.getDebit_acc());
+        this.setDateTime(trans.getMade_on());
+    }
+
 }

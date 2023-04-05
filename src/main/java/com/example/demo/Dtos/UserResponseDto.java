@@ -4,7 +4,9 @@ import com.example.demo.Enums.Gender;
 import com.example.demo.Enums.Role;
 import com.example.demo.Model.*;
 import jakarta.persistence.*;
+import lombok.Getter;
 
+@Getter
 public class UserResponseDto extends ResponseDto
 {
 
@@ -38,6 +40,14 @@ public class UserResponseDto extends ResponseDto
         this.gender = user.getGender();
         this.email = user.getEmail();
         this.phone = user.getPhone();
-        this.account = new AccountResponseDto(user.getAccount());
+    }
+
+    public void setAccount(Account acc)
+    {
+        if(!(acc == null))
+        {
+            this.account = new AccountResponseDto(acc);
+        }
+
     }
 }

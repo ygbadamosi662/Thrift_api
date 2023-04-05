@@ -40,8 +40,6 @@ public class ThriftController
 
     private User user;
 
-//    private HashMap<String, Object> data_res;
-
     private final ThrifterHistoryRepository historyRepository;
 
     private List<User> Thrifters;
@@ -111,10 +109,9 @@ public class ThriftController
         history.setConsent(con);
         history = historyRepository.save(history);
 
-        System.out.println(organizer.getThrift_list());
-
-
-        return new ResponseEntity<>(new ThriftResponseDto(thrift), HttpStatus.OK);
+        ThriftResponseDto dto = new ThriftResponseDto(thrift);
+        dto.setAllWeirdAssClasses(thrift);
+        return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
     @PostMapping("/add")
@@ -122,6 +119,7 @@ public class ThriftController
     {
         boolean exist_in = false;
         List<Long> longList = new ArrayList<>();
+        ThrifterHistory history = new ThrifterHistory();
 
 
         Optional<User> byEmail = userRepository.findByEmail(add.getEmail());
@@ -161,7 +159,6 @@ public class ThriftController
             for (int j = 0; j < thrift_list.size(); j++) {
                 if(thrift.getId() == thrift_list.get(j).getId())
                 {
-                    System.out.println("we exist");
                     exist_in = true;
                 }
             }
@@ -172,7 +169,7 @@ public class ThriftController
             longList.add(thrift.getId());
             thrifter.settingThriftList(longList);
 //            List<ThrifterHistory> historyList = util.history_dump(thrifter);
-            ThrifterHistory history = new ThrifterHistory();
+
             history.setThrift(thrift);
             history.setUser(thrifter);
             Consent con = Consent.OYELLOW;
@@ -184,8 +181,10 @@ public class ThriftController
             return new ResponseEntity<>("Member already added", HttpStatus.BAD_REQUEST);
         }
 
-        System.out.println("we end");
-        return ResponseEntity.ok("thrifter added succesfully");
+        ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(history);
+        dto.setAll(history);
+
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping("/join")
@@ -193,6 +192,7 @@ public class ThriftController
     {
         boolean exist_in = false;
         List<Long> longList = new ArrayList<>();
+        ThrifterHistory history = new ThrifterHistory();
 
         String authHeader = req.getHeader("Authorization");
         String jwt = authHeader.substring("Bearer ".length());
@@ -230,15 +230,17 @@ public class ThriftController
             thrifter.settingThriftList(longList);
 //            List<ThrifterHistory> historyList = util.history_dump(thrifter);
             userRepository.save(thrifter);
-            ThrifterHistory history = new ThrifterHistory();
+
             history.setThrift(thrift);
             history.setUser(thrifter);
             Consent con = Consent.TYELLOW;
             history.setConsent(con);
             history = historyRepository.save(history);
 
-            return ResponseEntity.ok("member added succesfully");
+            ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(history);
+            dto.setAll(history);
 
+            return ResponseEntity.ok(dto);
         }
         else
         {
@@ -252,6 +254,7 @@ public class ThriftController
         String authHeader = req.getHeader("Authorization");
         String jwt = authHeader.substring("Bearer ".length());
         String info = "";
+        ThrifterHistory istory = new ThrifterHistory();
 
         Optional<User> chk_chk = userRepository.findByEmail(jwtService.getSubject(jwt));
         User thrifter= chk_chk.get();
@@ -283,14 +286,11 @@ public class ThriftController
             }
 
             Consent con = Consent.GREEN;
-            ThrifterHistory istory = byTwo.get();
+            istory = byTwo.get();
             if(istory.getConsent().name().equals("TYELLOW"))
             {
                 istory.setConsent(con);
                 istory = historyRepository.save(istory);
-
-                info = "user request accepted";
-                System.out.println("hey hey");
             }
 
 
@@ -304,17 +304,18 @@ public class ThriftController
             }
 
             Consent con = Consent.GREEN;
-            ThrifterHistory istory = byTwo.get();
+            istory = byTwo.get();
             if(istory.getConsent().name().equals("OYELLOW"))
             {
                 istory.setConsent(con);
                 istory = historyRepository.save(istory);
-
-                info = "request accepted";
             }
         }
 
-        return new ResponseEntity<>(info, HttpStatus.OK);
+        ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(istory);
+        dto.setAll(istory);
+
+        return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
     @PostMapping("/set")
@@ -341,6 +342,24 @@ public class ThriftController
         thrift.setCollector(thrifter);
         thrift = thriftsRepository.save(thrift);
 
-        return new ResponseEntity<>("Thrift collector set succesfully", HttpStatus.OK);
+        ThriftResponseDto dto = new ThriftResponseDto(thrift);
+        dto.setAllWeirdAssClasses(thrift);
+
+        return new ResponseEntity<>(dto, HttpStatus.OK);
+    }
+
+    @PostMapping("thrifts")
+    public ResponseEntity<?> getThrifts(@Valid HttpServletRequest req)
+    {
+        System.out.println("here here");
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
+
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Map<String, Map<String, List<ThriftResponseDto>>> more_info =
+                util.get_thrifts(user, true);
+
+        return new ResponseEntity<>(more_info, HttpStatus.OK);
     }
 }
