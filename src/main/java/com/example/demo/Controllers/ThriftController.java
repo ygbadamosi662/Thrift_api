@@ -89,7 +89,7 @@ public class ThriftController
         thrift.setThrift_end(util.get_thrift_end(thrift));
         thrift.setOrganizer(organizer);
         thrift.setCollection_amount(util.collectionCalc(thrift));
-        thrift.setCollection_index(0);
+        thrift.setThrift_index(0);
         thrift.setCollection_available(0);
         Lifecycle cycle = Lifecycle.AWAITING;
         thrift.setCycle(cycle);
@@ -351,7 +351,6 @@ public class ThriftController
     @PostMapping("thrifts")
     public ResponseEntity<?> getThrifts(@Valid HttpServletRequest req)
     {
-        System.out.println("here here");
         String authHeader = req.getHeader("Authorization");
         String jwt = authHeader.substring("Bearer ".length());
 
@@ -362,4 +361,77 @@ public class ThriftController
 
         return new ResponseEntity<>(more_info, HttpStatus.OK);
     }
+
+    @PostMapping("members")
+    public ResponseEntity<?> getMembers(@Valid @RequestBody JoinDto dto, HttpServletRequest req)
+    {
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
+
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
+        }
+
+        List<User> members = util.get_members(byTicket.get());
+        List<UserResponseDto> dtos = new ArrayList<>();
+        members.forEach((member)-> {
+            dtos.add(new UserResponseDto(member));
+        });
+
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
+    }
+
+    @PostMapping("remove")
+    public ResponseEntity<?> removeMember(@Valid @RequestBody RemoveDto dto, HttpServletRequest req)
+    {
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
+
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
+        }
+
+        if(!(byTicket.get().getOrganizer().equals(user)))
+        {
+            ThrifterHistory istory = util.removeMember(byTicket.get(), user);
+            ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
+            resDto.setAll(istory);
+
+            return new ResponseEntity<>(resDto, HttpStatus.OK);
+        }
+
+        if(dto.getMemberEmail().equals(user.getEmail()))
+        {
+            ThrifterHistory istory = util.removeMember(byTicket.get(), user);
+            thriftsRepository.deleteById(byTicket.get().getId());
+            ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
+            resDto.setAll(istory);
+
+            return new ResponseEntity<>(resDto, HttpStatus.OK);
+        }
+
+        Optional<User> byEmail = userRepository.findByEmail(dto.getMemberEmail());
+        if(byEmail.isEmpty())
+        {
+            return new ResponseEntity<>("user is not a member of the given thrift",
+                    HttpStatus.BAD_REQUEST);
+        }
+        ThrifterHistory istory = util.removeMember(byTicket.get(), byEmail.get());
+        ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
+        resDto.setAll(istory);
+
+        return new ResponseEntity<>(resDto, HttpStatus.OK);
+    }
+
+
+
+
 }

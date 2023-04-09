@@ -2,30 +2,25 @@ package com.example.demo.Model;
 
 import com.example.demo.Enums.Gender;
 import com.example.demo.Enums.Role;
-import com.example.demo.Repositories.AccountRepository;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 
 @Getter
 @Setter
-//@RequiredArgsConstructor
 @Entity
 public class User extends Beneficiary implements UserDetails
 {
 //    get and set thrift_list with gettingThrift_list() and settimgThrift_list() respectively
+//    thrift_list is the active thrift list of the user, a user can only have 3 active thrift max.
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column( name="user_id")
@@ -67,8 +62,6 @@ public class User extends Beneficiary implements UserDetails
 
     @OneToMany(mappedBy = "user")
     private List<Thrift_hub> thrift_hub;
-    
-//    private long acc_id = 0;
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "account_id", referencedColumnName = "acc_id")
@@ -105,7 +98,6 @@ public class User extends Beneficiary implements UserDetails
             {
                 this.thrift_list = this.thrift_list + "_" + longList.get(i)+"";
             }
-//
         }
     }
 
@@ -139,15 +131,24 @@ public class User extends Beneficiary implements UserDetails
         return list;
     }
 
+    public void editThriftList(Long remove)
+    {
+        List<Long> ids = this.gettingThrift_list();
+        ids.forEach((id)->{
+            if(id.equals(remove))
+            {
+                ids.remove(remove);
+            }
+        });
+
+        this.setThrift_list(null);
+        this.settingThriftList(ids);
+    }
+
     public void setsClassName()
     {
         this.setClassName(User.class.getSimpleName());
     }
-
-//    public Map<String, String> getHash()
-//    {
-//
-//    }
 
     @Override
     public java.util.Collection<? extends GrantedAuthority> getAuthorities() {

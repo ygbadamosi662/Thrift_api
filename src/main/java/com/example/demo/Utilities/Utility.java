@@ -123,7 +123,7 @@ public class Utility
                 {
                     Optional<Thrift> thrift = thriftsRepository.findById(byThr.get(i).getId());
                     LocalDate now = LocalDate.now();
-                    if(thrift.get().getThrift_end().isBefore(now))
+                    if(thrift.get().getThrift_start().isBefore(now))
                     {
                         historyRepository.delete(byThr.get(i));
                     }
@@ -219,7 +219,8 @@ public class Utility
         return thriftList;
     }
 
-    public  Map<String, Map <String, List<ThriftResponseDto> > >get_thrifts(User user, boolean more_info)
+    public  Map<String, Map <String, List<ThriftResponseDto> > >
+    get_thrifts(User user, boolean more_info)
     {
         List<Thrift> thrifts= this.get_thrifts(user);
         Map <String, List<ThriftResponseDto> > hold = new HashMap<>();
@@ -324,6 +325,20 @@ public class Utility
         return bigBoy;
     }
 
+    public ThrifterHistory removeMember(Thrift thrift, User user)
+    {
+        Optional<ThrifterHistory> byThriftAndUser = historyRepository.findByThriftAndUser(thrift, user);
+        if(byThriftAndUser.isEmpty())
+        {
+            System.out.println("user is not a member or thrift dont exist");
+        }
+        ThrifterHistory istory = byThriftAndUser.get();
+        historyRepository.deleteById(byThriftAndUser.get().getId());
+
+        user.editThriftList(thrift.getId());
+
+        return istory;
+    }
 
     public List<Thrift> get_completed(User user)
     {
@@ -363,6 +378,21 @@ public class Utility
         }
 
         return consent;
+    }
+
+    public List<Thrift> collector_notes(User user)
+    {
+        List<Thrift> thrifts = this.get_thrifts(user);
+
+        for (Thrift thrift: thrifts)
+        {
+            if(!(thrift.getCollector().equals(user)))
+            {
+                thrifts.remove(thrift);
+            }
+        }
+
+        return thrifts;
     }
 
     public Map<String, Map> note_manager(User user)

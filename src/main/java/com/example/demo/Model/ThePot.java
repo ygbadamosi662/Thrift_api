@@ -32,8 +32,6 @@ public class ThePot
     @CreationTimestamp
     private LocalDate collection_date;
 
-//    private long transaction_id;
-
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "transaction_id", referencedColumnName = "transaction_id")
     private Transaction transaction;
