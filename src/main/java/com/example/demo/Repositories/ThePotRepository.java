@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface CollectionRepository extends JpaRepository<ThePot,Long>
+public interface ThePotRepository extends JpaRepository<ThePot,Long>
 {
     Optional<ThePot> findById(Long id);
 }

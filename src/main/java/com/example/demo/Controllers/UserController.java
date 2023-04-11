@@ -1,10 +1,11 @@
 package com.example.demo.Controllers;
 
-import com.example.demo.Dtos.LoginDto;
-import com.example.demo.Dtos.UserDto;
-import com.example.demo.Dtos.UserResponseDto;
+import com.example.demo.Dtos.*;
+import com.example.demo.Enums.Side;
+import com.example.demo.Model.Account;
 import com.example.demo.Model.Thrift;
 import com.example.demo.Model.User;
+import com.example.demo.Repositories.AccountRepository;
 import com.example.demo.Repositories.ThriftsRepository;
 import com.example.demo.Repositories.UserRepository;
 import com.example.demo.Services.JwtService;
@@ -35,6 +36,8 @@ public class UserController
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+
+    private final AccountRepository accRepo;
 
     @PostMapping("/home")
     public String mean ()
@@ -93,6 +96,33 @@ public class UserController
         dto.setJwt(jwt);
         dto.setAccount(user.getUserAccount());
         return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("addAcc")
+    public ResponseEntity<?> addAcc(@Valid @RequestBody AddAccDto dto, HttpServletRequest req)
+    {
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
+
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Account acc = new Account(dto);
+        acc.setSide(Side.USER);
+        accRepo.save(acc);
+        System.out.println(acc.getId());
+
+        if(user.getUserAccount() != null)
+        {
+            Account formerAcc = user.getUserAccount();
+            accRepo.delete(accRepo.findById(formerAcc.getId()).get());
+        }
+        user.setUserAccount(acc);
+
+        acc.setsBen();
+        AccountResponseDto resDto = new AccountResponseDto();
+        resDto.setsBen(acc);
+
+        return ResponseEntity.ok(resDto);
     }
 
     private static Map<String, Object> setExtraClaims(User user)

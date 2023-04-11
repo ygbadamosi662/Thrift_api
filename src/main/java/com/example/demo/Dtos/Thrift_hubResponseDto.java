@@ -26,7 +26,7 @@ public class Thrift_hubResponseDto extends ResponseDto
     public Thrift_hubResponseDto(Thrift_hub hub)
     {
         this.id = hub.getId();
-        this.index = hub.getThrift_index();
+        this.index = hub.getThriftIndex();
     }
 
     public void setThrift(Thrift thrift)

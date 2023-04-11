@@ -7,5 +7,5 @@ public class RemoveDto
 {
     String ticket;
 
-    String memberEmail;
+    String memberEmail = "none";
 }

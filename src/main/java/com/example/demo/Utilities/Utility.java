@@ -1,15 +1,15 @@
 package com.example.demo.Utilities;
 
 import com.example.demo.Dtos.ThriftResponseDto;
+import com.example.demo.Enums.Account_type;
 import com.example.demo.Enums.Consent;
 import com.example.demo.Enums.Lifecycle;
-import com.example.demo.Model.Thrift;
-import com.example.demo.Model.ThrifterHistory;
-import com.example.demo.Model.User;
-import com.example.demo.Repositories.ThrifterHistoryRepository;
-import com.example.demo.Repositories.ThriftsRepository;
-import com.example.demo.Repositories.UserRepository;
+import com.example.demo.Enums.Side;
+import com.example.demo.Model.*;
+import com.example.demo.Repositories.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -21,15 +21,19 @@ public class Utility
 {
     private int multi;
 
-//    private User user;
-
     private final ThrifterHistoryRepository historyRepository;
-
-    private List<User> Thrifters;
 
     private final ThriftsRepository thriftsRepository;
 
     private final UserRepository userRepository;
+
+    private final AccountRepository accRepo;
+
+    private final TransactionRepository transRepo;
+
+    private final Thrift_hubRepository hubRepo;
+
+    private final ThePotRepository potRepo;
 
 
     public List<User> get_members(Thrift thrift)
@@ -46,6 +50,41 @@ public class Utility
         return members;
     }
 
+    public boolean is_member(User user, Thrift thrift)
+    {
+        List<User> members = this.get_members(thrift);
+        boolean present = false;
+        for (User member: members)
+        {
+            if(member.equals(user))
+            {
+                present = true;
+            }
+        }
+
+        return present;
+    }
+
+    public boolean slotsManager(Thrift thrift, int slot)
+    {
+        thrift.setSlots(thrift.getSlots() + slot);
+
+        if(this.duration_chk(thrift) == false)
+        {
+            return false;
+        }
+
+        thrift.setCollection_amount(this.collectionCalc(thrift));
+        thriftsRepository.save(thrift);
+
+        return true;
+    }
+
+    public void minus_slot(Thrift thrift, int slot)
+    {
+        thrift.setSlots(thrift.getSlots() - slot);
+        thriftsRepository.save(thrift);
+    }
     public LocalDate get_thrift_end(Thrift patsy)
     {
 //        should only be called after duration_check() is called
@@ -62,7 +101,7 @@ public class Utility
             }
         });
         LocalDate thrift_end = patsy.getThrift_start()
-                .plusWeeks(multi * patsy.getNo_of_thrifters());
+                .plusWeeks(multi * patsy.getSlots());
 
         return thrift_end;
     }
@@ -71,6 +110,7 @@ public class Utility
     {
 //        the longest a thrift should last is 52 weeks
 //        this method makes sure thats adhered to
+//        returns true if thrift duration is ok and false otherwise
         int longest = 52;
 
 
@@ -86,17 +126,38 @@ public class Utility
             }
         });
 
-        return longest > (multi * thrift.getNo_of_thrifters());
-
+        return longest <= (multi * thrift.getSlots());
     }
 
     public long collectionCalc(Thrift thrift)
     {
-        long amnt = thrift.getNo_of_thrifters() * thrift.getPer_term_amnt();
+        long amnt = thrift.getSlots() * thrift.getPer_term_amnt();
 
         return amnt;
     }
 
+    public long availablePotCalc(Thrift thrift, long index)
+    {
+        List<Thrift_hub> hubs = hubRepo.findByThriftAndThriftIndex(thrift, index);
+        long pot = 0;
+
+        if(hubs.size() == 0)
+        {
+            return pot;
+        }
+
+        for (Thrift_hub hub: hubs)
+        {
+            pot = pot + hub.getTransaction().getAmount();
+        }
+
+        return pot;
+    }
+
+    public boolean thePriceIsRight(ThrifterHistory isto, int amnt)
+    {
+        return (isto.getSlot() * isto.getThrift().getPer_term_amnt()) == amnt;
+    }
 
     public List<ThrifterHistory> consent_hr(User thri)
     {
@@ -325,19 +386,48 @@ public class Utility
         return bigBoy;
     }
 
-    public ThrifterHistory removeMember(Thrift thrift, User user)
+    public ThrifterHistory removeMember(Thrift thrift, User member)
     {
-        Optional<ThrifterHistory> byThriftAndUser = historyRepository.findByThriftAndUser(thrift, user);
+//        this function removes member from thrift
+//        if the member is the thrift organixer it deletes the thrift and clears all history of...
+//        the thrift from ThrifterHistoryRepository
+        if(thrift.getOrganizer().equals(member))
+        {
+            ThrifterHistory org = historyRepository.findByThriftAndUser(thrift, member).get();
+            List<ThrifterHistory> all = historyRepository.findByThrift(thrift);
+            all.forEach((istory)->{
+                historyRepository.deleteById(istory.getId());
+            });
+            member.editThriftList(thrift.getId());
+            return org;
+        }
+        Optional<ThrifterHistory> byThriftAndUser = historyRepository.
+                findByThriftAndUser(thrift, member);
         if(byThriftAndUser.isEmpty())
         {
             System.out.println("user is not a member or thrift dont exist");
         }
         ThrifterHistory istory = byThriftAndUser.get();
         historyRepository.deleteById(byThriftAndUser.get().getId());
-
-        user.editThriftList(thrift.getId());
+        this.minus_slot(thrift, istory.getSlot());
+        thrift.setCollection_amount(this.collectionCalc(thrift));
+        thriftsRepository.save(thrift);
+        member.editThriftList(thrift.getId());
 
         return istory;
+    }
+
+    public Account generateAcc(Thrift thrift)
+    {
+        ThriftAccountGenerator genAcc = new ThriftAccountGenerator();
+        Account acc = new Account();
+        acc.setAcc_num(genAcc.generateAccNum());
+        acc.setBank(genAcc.getBank());
+        acc.setAcc_name(thrift.getOrganizer().getFname() + " " + thrift.getOrganizer().getLname());
+        acc.setAccount_type(Account_type.SAVINGS);
+        acc.setSide(Side.THRIFT);
+
+        return acc;
     }
 
     public List<Thrift> get_completed(User user)

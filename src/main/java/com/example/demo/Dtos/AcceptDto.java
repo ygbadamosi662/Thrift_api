@@ -9,6 +9,6 @@ public class AcceptDto
 {
     private String ticket;
 
-    private String email;
+    private String email = "none";
 
 }

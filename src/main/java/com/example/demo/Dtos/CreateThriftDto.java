@@ -33,8 +33,6 @@ public class CreateThriftDto
     @NotNull
     private long per_term_amnt;
 
-    @NotNull
-    private long no_of_thrifters;
 
 //    @JsonDeserialize(using = DateHandler.class)
     private String thrift_start;
@@ -50,10 +48,8 @@ public class CreateThriftDto
         thrift.setThriftName(this.thriftName);
         thrift.setTerm(this.term);
         thrift.setPer_term_amnt(this.per_term_amnt);
-        thrift.setNo_of_thrifters(this.no_of_thrifters);
         thrift.setThrift_start(this.setting_start());
-//        thrift.setCycle(this.);
-//        thrift.setThrift_start(this.thrift_start);
+        thrift.setNext_thrift_date(this.setting_start());
 
         return thrift;
     }
@@ -61,7 +57,7 @@ public class CreateThriftDto
     public LocalDate setting_start()
     {
         LocalDate start_date = LocalDate.parse(this.thrift_start);
-//        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("YYYY-MM-dd");
+
         return start_date;
     }
 

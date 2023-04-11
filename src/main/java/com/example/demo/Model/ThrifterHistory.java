@@ -24,15 +24,19 @@ public class ThrifterHistory extends ResponseDto
     @JoinColumn(name = "thrift_id")
     private Thrift thrift;
 
+    @ManyToOne(cascade= CascadeType.ALL)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    private int slot;
+
     @CreationTimestamp
     private LocalDateTime created_on;
 
     @UpdateTimestamp
     private LocalDateTime updated_on;
 
-    @ManyToOne(cascade= CascadeType.ALL)
-    @JoinColumn(name = "user_id")
-    private User user;
+
 
     @Enumerated(EnumType.STRING)
     private Consent consent = Consent.YELLOW;

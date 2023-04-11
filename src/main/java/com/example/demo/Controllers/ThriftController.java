@@ -3,12 +3,9 @@ package com.example.demo.Controllers;
 import com.example.demo.Dtos.*;
 import com.example.demo.Enums.Consent;
 import com.example.demo.Enums.Lifecycle;
-import com.example.demo.Model.ThrifterHistory;
-import com.example.demo.Model.Thrift;
-import com.example.demo.Model.User;
-import com.example.demo.Repositories.ThrifterHistoryRepository;
-import com.example.demo.Repositories.ThriftsRepository;
-import com.example.demo.Repositories.UserRepository;
+import com.example.demo.Enums.TypeOf;
+import com.example.demo.Model.*;
+import com.example.demo.Repositories.*;
 import com.example.demo.Services.JwtService;
 import com.example.demo.Utilities.Utility;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,10 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -42,7 +36,13 @@ public class ThriftController
 
     private final ThrifterHistoryRepository historyRepository;
 
-    private List<User> Thrifters;
+    private final AccountRepository accRepo;
+
+    private final TransactionRepository transRepo;
+
+    private final Thrift_hubRepository hubRepo;
+
+    private final ThePotRepository potRepo;
 
     @Autowired
     private Utility util;
@@ -77,22 +77,20 @@ public class ThriftController
             List<Thrift> more_info = (ArrayList) check.get("more_info");
             return new ResponseEntity<>("User at limit,info incoming", HttpStatus.BAD_REQUEST);
         }
+
         Thrift thrift = create.getThrift();
-
-        if(!(util.duration_chk(thrift)))
-        {
-            return new ResponseEntity<>(
-                    "Every Thrift must end within a yaer,too much members or too short term",
-                    HttpStatus.BAD_REQUEST);
-        }
-
         thrift.setThrift_end(util.get_thrift_end(thrift));
         thrift.setOrganizer(organizer);
-        thrift.setCollection_amount(util.collectionCalc(thrift));
-        thrift.setThrift_index(0);
+//        updates the thrift slots and collection_amnt property
+        util.slotsManager(thrift, 1);
+
+        thrift.setThrift_index(1);
         thrift.setCollection_available(0);
         Lifecycle cycle = Lifecycle.AWAITING;
         thrift.setCycle(cycle);
+        Account acc = util.generateAcc(thrift);
+        accRepo.save(acc);
+        thrift.setThriftAccount(acc);
         thriftsRepository.save(thrift);
 
         Thrift update = thriftsRepository.findById(thrift.getId()).get();
@@ -105,99 +103,145 @@ public class ThriftController
         ThrifterHistory history = new ThrifterHistory();
         history.setThrift(thrift);
         history.setUser(organizer);
+        history.setSlot(1);
         Consent con = Consent.GREEN;
         history.setConsent(con);
         history = historyRepository.save(history);
 
         ThriftResponseDto dto = new ThriftResponseDto(thrift);
         dto.setAllWeirdAssClasses(thrift);
+
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
     @PostMapping("/add")
     public ResponseEntity<?> addThrifter(@Valid @RequestBody AddThrifterDto add, HttpServletRequest req)
     {
-        boolean exist_in = false;
-        List<Long> longList = new ArrayList<>();
-        ThrifterHistory history = new ThrifterHistory();
-
-
-        Optional<User> byEmail = userRepository.findByEmail(add.getEmail());
-
-        if(!(byEmail.isPresent()))
-        {
-            return new ResponseEntity<>("User must be registred to per-take in thrift", HttpStatus.BAD_REQUEST);
-        }
-
-        User thrifter = byEmail.get();
-
-//        checking if thrifter has reached participation limit
-        Map<String, Object> check = util.chk_user_limit(thrifter);
-        boolean good = (Boolean) check.get("good?");
-        if(good == false)
-        {
-            Map<String, Integer> info = (HashMap) check.get("info");
-            List<Thrift> more_info = (ArrayList) check.get("more_info");
-            return new ResponseEntity<>("User at limit,info incoming", HttpStatus.BAD_REQUEST);
-        }
-
         String authHeader = req.getHeader("Authorization");
         String jwt = authHeader.substring("Bearer ".length());
 
-        Optional<User> organizer_byEmail =  userRepository.findByEmail(jwtService.getSubject(jwt));
-        User organizer = organizer_byEmail.get();
-        Thrift thrift = thriftsRepository
-                .findByOrganizerAndThriftName(organizer, add.getThrift_name())
-                .get();
+        User user =  userRepository.findByEmail(jwtService.getSubject(jwt)).get();
 
-//        checking if user is already part of thrift
-        if(!(thrifter.getThrift_list() == null))
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(add.getTicket());
+        if(byTicket.isEmpty())
         {
-            List <Thrift> thrift_list= util.get_thrifts(thrifter);
+            return new ResponseEntity<>("thrift dooes not exist", HttpStatus.BAD_REQUEST);
+        }
+        Thrift thrift = byTicket.get();
 
-
-            for (int j = 0; j < thrift_list.size(); j++) {
-                if(thrift.getId() == thrift_list.get(j).getId())
-                {
-                    exist_in = true;
-                }
-            }
+        LocalDate now = LocalDate.now();
+        if(thrift.getThrift_start().isBefore(now))
+        {
+            return new ResponseEntity<>("thrift has started,cant add anymore members",
+                    HttpStatus.BAD_REQUEST);
         }
 
-        if(exist_in == false)
+        if(user.equals(thrift.getOrganizer()))
         {
-            longList.add(thrift.getId());
-            thrifter.settingThriftList(longList);
-//            List<ThrifterHistory> historyList = util.history_dump(thrifter);
+            boolean exist_in = false;
+            List<Long> longList = new ArrayList<>();
+            ThrifterHistory history = new ThrifterHistory();
 
-            history.setThrift(thrift);
-            history.setUser(thrifter);
-            Consent con = Consent.OYELLOW;
-            history.setConsent(con);
-            history = historyRepository.save(history);
+
+            Optional<User> byEmail = userRepository.findByEmail(add.getEmail());
+
+            if(byEmail.isEmpty())
+            {
+                return new ResponseEntity<>("User must be registred to partake in thrift", HttpStatus.BAD_REQUEST);
+            }
+
+            User thrifter = byEmail.get();
+
+//        checking if thrifter has reached participation limit
+            Map<String, Object> check = util.chk_user_limit(thrifter);
+            boolean good = (Boolean) check.get("good?");
+            if(good == false)
+            {
+                Map<String, Integer> info = (HashMap) check.get("info");
+                List<Thrift> more_info = (ArrayList) check.get("more_info");
+                return new ResponseEntity<>("User at limit,info incoming", HttpStatus.BAD_REQUEST);
+            }
+
+
+//        checking if user is already part of thrift
+            if(!(thrifter.getThrift_list() == null))
+            {
+                List <Thrift> thrift_list= util.get_thrifts(thrifter);
+
+
+                for (int j = 0; j < thrift_list.size(); j++) {
+                    if(thrift.getId() == thrift_list.get(j).getId())
+                    {
+                        exist_in = true;
+                    }
+                }
+            }
+
+            if(exist_in == false)
+            {
+                longList.add(thrift.getId());
+                thrifter.settingThriftList(longList);
+
+//            updates the thrift slots and collection_amnt property
+//            and also checks if the thrift duration is not over a year
+                if(util.slotsManager(thrift, add.getSlot()) == false)
+                {
+                    return new ResponseEntity<>(
+                            "Every Thrift must end within a yaer,too much members or too short term",
+                            HttpStatus.BAD_REQUEST);
+                }
+
+                history.setThrift(thrift);
+                history.setUser(thrifter);
+                history.setSlot(add.getSlot());
+                Consent con = Consent.OYELLOW;
+                history.setConsent(con);
+                history = historyRepository.save(history);
+            }
+            else
+            {
+                return new ResponseEntity<>("Member already added", HttpStatus.BAD_REQUEST);
+            }
+
+            ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(history);
+            dto.setAll(history);
+
+            return ResponseEntity.ok(dto);
         }
         else
         {
-            return new ResponseEntity<>("Member already added", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Only the thrift organizer can add other members",
+                    HttpStatus.BAD_REQUEST);
         }
-
-        ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(history);
-        dto.setAll(history);
-
-        return ResponseEntity.ok(dto);
     }
 
     @PostMapping("/join")
     public ResponseEntity<?> joinThrift(@Valid @RequestBody JoinDto joint, HttpServletRequest req)
     {
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
+        User thrifter = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(joint.getTicket());
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("thrift does not exist",
+                    HttpStatus.BAD_REQUEST);
+        }
+        Thrift thrift = byTicket.get();
+
+        LocalDate now = LocalDate.now();
+        if(thrift.getThrift_start().isBefore(now))
+        {
+            return new ResponseEntity<>("too late,thrift already started",
+                    HttpStatus.BAD_REQUEST);
+        }
+
         boolean exist_in = false;
         List<Long> longList = new ArrayList<>();
         ThrifterHistory history = new ThrifterHistory();
 
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
-        Optional<User> byEmail = userRepository.findByEmail(jwtService.getSubject(jwt));
-        User thrifter = byEmail.get();
+
 
         //        checking if thrifter has reached participation limit
         Map<String, Object> check = util.chk_user_limit(thrifter);
@@ -206,10 +250,8 @@ public class ThriftController
         {
             Map<String, Integer> info = (HashMap) check.get("info");
             List<Thrift> more_info = (ArrayList) check.get("more_info");
-            return new ResponseEntity<>("User at limit,info incoming", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("User at limit", HttpStatus.BAD_REQUEST);
         }
-
-        Thrift thrift = thriftsRepository.findByTicket(joint.getTicket()).get();
 
         if(!(thrifter.getThrift_list() == null))
         {
@@ -228,11 +270,20 @@ public class ThriftController
         {
             longList.add(thrift.getId());
             thrifter.settingThriftList(longList);
-//            List<ThrifterHistory> historyList = util.history_dump(thrifter);
             userRepository.save(thrifter);
+
+//            updates the thrift slots and collection_amnt property
+//            and also checks if the thrift duration is not over a year
+            if(util.slotsManager(thrift, joint.getSlot()) == false)
+            {
+                return new ResponseEntity<>(
+                        "Every Thrift must end within a yaer,too much members or too short term",
+                        HttpStatus.BAD_REQUEST);
+            }
 
             history.setThrift(thrift);
             history.setUser(thrifter);
+            history.setSlot(joint.getSlot());
             Consent con = Consent.TYELLOW;
             history.setConsent(con);
             history = historyRepository.save(history);
@@ -253,34 +304,38 @@ public class ThriftController
     {
         String authHeader = req.getHeader("Authorization");
         String jwt = authHeader.substring("Bearer ".length());
-        String info = "";
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
         ThrifterHistory istory = new ThrifterHistory();
 
-        Optional<User> chk_chk = userRepository.findByEmail(jwtService.getSubject(jwt));
-        User thrifter= chk_chk.get();
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket.getTicket());
 
-        if(!(byTicket.isPresent()))
+        if(byTicket.isEmpty())
         {
             return new ResponseEntity<>("thrift dont exist", HttpStatus.BAD_REQUEST);
         }
         Thrift thrift = byTicket.get();
-//        User oo = thrift.getOrganizer();
+
+        LocalDate now = LocalDate.now();
+        if(thrift.getThrift_start().isBefore(now))
+        {
+            return new ResponseEntity<>("too late,thrift already started", HttpStatus.BAD_REQUEST);
+        }
 
 //        if organizer
-        if(thrift.getOrganizer().equals(thrifter))
+        if(thrift.getOrganizer().equals(user))
         {
 
             Optional<User> byMail = userRepository.findByEmail(ticket.getEmail());
-            if(!(byMail.isPresent()))
+            if(byMail.isEmpty())
             {
-                return new ResponseEntity<>("user dont exist", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("user does not exist", HttpStatus.BAD_REQUEST);
             }
 
-            User user = byMail.get();
+            User member = byMail.get();
 
-            Optional<ThrifterHistory> byTwo = historyRepository.findByThriftAndUser(thrift, user);
-            if(!(byTwo.isPresent()))
+            Optional<ThrifterHistory> byTwo = historyRepository.findByThriftAndUser(thrift, member);
+            if(byTwo.isEmpty())
             {
                 return new ResponseEntity<>("user have retracted their interest", HttpStatus.BAD_REQUEST);
             }
@@ -295,12 +350,13 @@ public class ThriftController
 
 
         }
-        else if (!(thrift.getOrganizer().equals(thrifter)))
+        else if (!(thrift.getOrganizer().equals(user)))
         {
-            Optional<ThrifterHistory> byTwo = historyRepository.findByThriftAndUser(thrift, thrifter);
-            if(!(byTwo.isPresent()))
+            Optional<ThrifterHistory> byTwo = historyRepository.findByThriftAndUser(thrift, user);
+            if(byTwo.isEmpty())
             {
-                return new ResponseEntity<>("user have retracted their interest", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("organizer have retracted their offer",
+                        HttpStatus.BAD_REQUEST);
             }
 
             Consent con = Consent.GREEN;
@@ -324,13 +380,7 @@ public class ThriftController
         String authHeader = req.getHeader("Authorization");
         String jwt = authHeader.substring("Bearer ".length());
 
-        User organizer = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
-        Optional<User> byEmail = userRepository.findByEmail(set.getUserEmail());
-        if(!(byEmail.isPresent()))
-        {
-            return new ResponseEntity<>("user does not exist", HttpStatus.BAD_REQUEST);
-        }
-        User thrifter = byEmail.get();
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(set.getTicket());
         if(!(byTicket.isPresent()))
@@ -339,13 +389,28 @@ public class ThriftController
         }
         Thrift thrift = byTicket.get();
 
-        thrift.setCollector(thrifter);
-        thrift = thriftsRepository.save(thrift);
+        if(user.equals(thrift.getOrganizer()))
+        {
+            Optional<User> byEmail = userRepository.findByEmail(set.getUserEmail());
+            if(!(byEmail.isPresent()))
+            {
+                return new ResponseEntity<>("user does not exist", HttpStatus.BAD_REQUEST);
+            }
+            User thrifter = byEmail.get();
 
-        ThriftResponseDto dto = new ThriftResponseDto(thrift);
-        dto.setAllWeirdAssClasses(thrift);
+            thrift.setCollector(thrifter);
+            thrift = thriftsRepository.save(thrift);
 
-        return new ResponseEntity<>(dto, HttpStatus.OK);
+            ThriftResponseDto dto = new ThriftResponseDto(thrift);
+            dto.setAllWeirdAssClasses(thrift);
+
+            return new ResponseEntity<>(dto, HttpStatus.OK);
+        }
+        else
+        {
+            return new ResponseEntity<>("Only the thrift organizer can set collector",
+                    HttpStatus.BAD_REQUEST);
+        }
     }
 
     @PostMapping("thrifts")
@@ -399,39 +464,227 @@ public class ThriftController
             return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
         }
 
-        if(!(byTicket.get().getOrganizer().equals(user)))
+        LocalDate now = LocalDate.now();
+        if(byTicket.get().getThrift_start().isBefore(now))
         {
-            ThrifterHistory istory = util.removeMember(byTicket.get(), user);
-            ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
-            resDto.setAll(istory);
-
-            return new ResponseEntity<>(resDto, HttpStatus.OK);
-        }
-
-        if(dto.getMemberEmail().equals(user.getEmail()))
-        {
-            ThrifterHistory istory = util.removeMember(byTicket.get(), user);
-            thriftsRepository.deleteById(byTicket.get().getId());
-            ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
-            resDto.setAll(istory);
-
-            return new ResponseEntity<>(resDto, HttpStatus.OK);
-        }
-
-        Optional<User> byEmail = userRepository.findByEmail(dto.getMemberEmail());
-        if(byEmail.isEmpty())
-        {
-            return new ResponseEntity<>("user is not a member of the given thrift",
+            return new ResponseEntity<>("too late,thrift already started",
                     HttpStatus.BAD_REQUEST);
         }
-        ThrifterHistory istory = util.removeMember(byTicket.get(), byEmail.get());
-        ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
-        resDto.setAll(istory);
 
-        return new ResponseEntity<>(resDto, HttpStatus.OK);
+        if(dto.getMemberEmail().equals("none"))
+        {
+            if(util.is_member(user, byTicket.get()))
+            {
+                ThrifterHistory istory = util.removeMember(byTicket.get(), user);
+                ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
+                resDto.setAll(istory);
+
+                return new ResponseEntity<>(resDto, HttpStatus.OK);
+            }
+            else
+            {
+                return new ResponseEntity<>("user is not a member of the given thrift",
+                        HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        if(user.equals(byTicket.get().getOrganizer()))
+        {
+            Optional<User> byEmail = userRepository.findByEmail(dto.getMemberEmail());
+            if(byEmail.isEmpty())
+            {
+                return new ResponseEntity<>("member does not exist",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            if(util.is_member(byEmail.get(), byTicket.get()))
+            {
+                ThrifterHistory istory = util.removeMember(byTicket.get(), byEmail.get());
+                ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(istory);
+                resDto.setAll(istory);
+
+                return new ResponseEntity<>(resDto, HttpStatus.OK);
+            }
+        }
+
+        return new ResponseEntity<>("Only the thrift organizer can remove another member",
+                    HttpStatus.BAD_REQUEST);
     }
 
+    @PostMapping("slot")
+    public ResponseEntity<?> manageSlot(@Valid @RequestBody AddThrifterDto dto, HttpServletRequest req)
+    {
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
 
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
+        }
+        Thrift thrift = byTicket.get();
+
+        LocalDate now = LocalDate.now();
+        if(thrift.getThrift_start().isBefore(now))
+        {
+            return new ResponseEntity<>("too late,thrift already started",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        if(dto.getEmail().equals("none"))
+        {
+            if(util.is_member(user, thrift))
+            {
+                ThrifterHistory isto = historyRepository.findByThriftAndUser(thrift, user).get();
+                util.minus_slot(thrift, isto.getSlot());
+
+                if(util.slotsManager(thrift, dto.getSlot()))
+                {
+                    isto.setSlot(dto.getSlot());
+                    historyRepository.save(isto);
+
+                    ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(isto);
+                    resDto.setAll(isto);
+
+                    return new ResponseEntity<>(resDto,
+                            HttpStatus.OK);
+                }
+                else
+                {
+                    return new ResponseEntity<>("Thrift cannot go on for over a year," +
+                            "term too longh or members too much",
+                            HttpStatus.BAD_REQUEST);
+                }
+            }
+            else
+            {
+                return new ResponseEntity<>("User is not a member of the given thrift",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+
+        }
+
+        if(user.equals(thrift.getOrganizer()))
+        {
+            Optional<User> byEmail = userRepository.findByEmail(dto.getEmail());
+            if(byEmail.isEmpty())
+            {
+                return new ResponseEntity<>("user does not exist",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            User member = byEmail.get();
+
+            if(util.is_member(member, thrift))
+            {
+                ThrifterHistory isto = historyRepository.findByThriftAndUser(thrift, member).get();
+                util.minus_slot(thrift, isto.getSlot());
+
+                if(util.slotsManager(thrift, dto.getSlot()))
+                {
+                    isto.setSlot(dto.getSlot());
+                    historyRepository.save(isto);
+
+                    ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(isto);
+                    resDto.setAll(isto);
+
+                    return new ResponseEntity<>(resDto,
+                            HttpStatus.OK);
+                }
+                else
+                {
+                    return new ResponseEntity<>("Thrift cannot go on for over a year," +
+                            "term too longh or members too much",
+                            HttpStatus.BAD_REQUEST);
+                }
+            }
+            else
+            {
+                return new ResponseEntity<>("User is not a member of the given thrift",
+                        HttpStatus.BAD_REQUEST);
+            }
+        }
+        else
+        {
+            return new ResponseEntity<>("Only the thrift organizer can add slots",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+    }
+
+    @PostMapping("pay")
+    public ResponseEntity<?> payThrift(@Valid @RequestBody PayDto dto, HttpServletRequest req)
+    {
+//        this a very very basic pay endpoint,resources not available to write a more sophisticated
+//        and standard pay endpoint,will have to make do with this for now
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
+
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
+        }
+        Thrift thrift = byTicket.get();
+
+        if(thrift.getCycle().equals(Lifecycle.COMPLETED))
+        {
+            return new ResponseEntity<>("Thrift has been completed,cant take anymore payments",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Optional<ThrifterHistory> byT_U = historyRepository.findByThriftAndUser(thrift, user);
+        if(byT_U.isEmpty())
+        {
+            return new ResponseEntity<>("User not a member of the given thrift",
+                    HttpStatus.BAD_REQUEST);
+        }
+        ThrifterHistory isto = byT_U.get();
+
+        if(util.thePriceIsRight(isto, dto.getAmnt()))
+        {
+//            creating transaction
+            Transaction trans = new Transaction();
+            trans.setDebit_acc(user.getUserAccount());
+            trans.setCredit_acc(thrift.getThriftAccount());
+            trans.setAmount(dto.getAmnt());
+            trans.setTypeOf(TypeOf.THRIFT);
+            Transaction savedTrans = transRepo.save(trans);
+
+//            creating thrift_hub
+            Thrift_hub hub = new Thrift_hub();
+            hub.setThrift(thrift);
+            hub.setSlot(dto.getSlot());
+            hub.setUser(user);
+            hub.setThriftIndex(thrift.getThrift_index());
+            hub.setTransaction(savedTrans);
+            Thrift_hub savedHub = hubRepo.save(hub);
+
+            thrift.update();
+            thrift.setCollection_available(util.availablePotCalc(thrift, thrift.getThrift_index()));
+            if(thrift.getCycle().equals(Lifecycle.AWAITING))
+            {
+                thrift.setCycle(Lifecycle.RUNNING);
+            }
+            thriftsRepository.save(thrift);
+
+            Thrift_hubResponseDto resDto = new Thrift_hubResponseDto(savedHub);
+            resDto.setAll(hub);
+
+            return new ResponseEntity<>(resDto, HttpStatus.OK);
+        }
+        else
+        {
+            return new ResponseEntity<>("Expecting " + isto.getSlot()*thrift.getPer_term_amnt()
+                    + " Naira,got " + dto.getAmnt() ,
+                    HttpStatus.BAD_REQUEST);
+        }
+    }
 
 
 }

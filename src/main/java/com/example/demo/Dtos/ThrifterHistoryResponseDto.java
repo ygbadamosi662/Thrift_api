@@ -18,6 +18,8 @@ public class ThrifterHistoryResponseDto extends ResponseDto
 
     private UserResponseDto user;
 
+    private int slot;
+
     @Enumerated(EnumType.STRING)
     private Consent consent;
 
@@ -27,6 +29,7 @@ public class ThrifterHistoryResponseDto extends ResponseDto
     {
         this.id = history.getId();
         this.consent = history.getConsent();
+        this.slot = history.getSlot();
     }
 
     public void setThrift(Thrift thrift)

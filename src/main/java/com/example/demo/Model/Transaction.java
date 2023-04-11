@@ -39,7 +39,4 @@ public class Transaction
 
     @Enumerated(EnumType.STRING)
     private TypeOf typeOf;
-
-
-
 }

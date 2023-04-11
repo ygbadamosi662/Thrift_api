@@ -10,4 +10,6 @@ public class JoinDto
     private String jwt;
 
     private String ticket;
+
+    private int slot;
 }

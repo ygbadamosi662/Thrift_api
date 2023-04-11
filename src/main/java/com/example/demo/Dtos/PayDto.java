@@ -1,16 +1,13 @@
 package com.example.demo.Dtos;
 
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
-@Setter
-public class AddThrifterDto
+public class PayDto
 {
-    private String email = "none";
+    private int amnt;
 
     private String ticket;
 
     private int slot;
-
 }

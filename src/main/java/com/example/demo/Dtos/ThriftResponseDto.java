@@ -43,7 +43,7 @@ public class ThriftResponseDto extends ResponseDto
 
     private long collection_amount;
 
-    private long no_of_thrifters;
+    private long slots;
 
     private String next_thrift_date;
 
@@ -56,8 +56,8 @@ public class ThriftResponseDto extends ResponseDto
     {
         this.collection_amount = thrift.getCollection_amount();
         this.collection_available = thrift.getCollection_available();
-        this.collection_index = thrift.getCollection_index();
-        this.no_of_thrifters = thrift.getNo_of_thrifters();
+        this.collection_index = thrift.getThrift_index();
+        this.slots = thrift.getSlots();
         this.cycle = thrift.getCycle();
         this.per_term_amnt = thrift.getPer_term_amnt();
         this.term = thrift.getTerm();

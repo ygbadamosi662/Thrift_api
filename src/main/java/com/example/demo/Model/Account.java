@@ -1,19 +1,14 @@
 package com.example.demo.Model;
 
+import com.example.demo.Dtos.AddAccDto;
 import com.example.demo.Enums.Account_type;
 import com.example.demo.Enums.Side;
-import com.example.demo.Repositories.ThriftsRepository;
-import com.example.demo.Repositories.UserRepository;
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Getter
 @Setter
@@ -43,8 +38,8 @@ public class Account extends Bank
     @UpdateTimestamp
     private LocalDateTime updated_on;
 
-    @Nullable
-    private String benUnique;
+//    @Nullable
+//    private String benUnique;
 
     @OneToOne(mappedBy = "userAccount")
     private User userBen;
@@ -54,20 +49,39 @@ public class Account extends Bank
 
     public Account(){}
 
-    public Account(User user, Thrift thrift)
+    public void setsBen()
     {
-        user = this.userBen;
-        thrift = this.thriftBen;
-
-        if(user.equals(null))
+        if(this.getUserBen() == null)
         {
-            this.setBen(thrift);
+            try
+            {
+                this.setBen(this.getThriftBen());
+            }
+            catch (NullPointerException e)
+            {
+                System.out.println("thriftBen is null");
+            }
         }
-        else if(thrift.equals(null))
+        else if(this.getThriftBen() == null)
         {
-            this.setBen(user);
+            try
+            {
+                this.setBen(this.getUserBen());
+            }
+            catch (NullPointerException e)
+            {
+                System.out.println("userBen is null");
+            }
         }
         this.setsClassName();
+    }
+
+    public Account(AddAccDto dto)
+    {
+        this.setAccount_type(dto.getType());
+        this.setAcc_name(dto.getAccName());
+        this.setBank(dto.getBank());
+        this.setAcc_num(dto.getAccNum());
     }
     public void setsClassName()
     {

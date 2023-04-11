@@ -56,8 +56,7 @@ public class Thrift extends Beneficiary
 
     private long collection_amount;
 
-    @Column(nullable = true)
-    private long no_of_thrifters;
+    private int slots = 0;
 
     @CreationTimestamp
     private LocalDateTime created_on;
@@ -75,7 +74,6 @@ public class Thrift extends Beneficiary
     @Column(nullable = true)
     private LocalDate next_thrift_date;
 
-    @Column(nullable = true)
     private long collection_available;
 
     @Enumerated(EnumType.STRING)
@@ -92,7 +90,7 @@ public class Thrift extends Beneficiary
         this.setsClassName();
     }
 
-    public void update_next_thrift_date()
+    public boolean update_next_thrift_date()
     {
 //        updates this.next_thrift_date,returns true if an update happens
 //        and returns false if no update happens
@@ -111,6 +109,12 @@ public class Thrift extends Beneficiary
                     this.setNext_thrift_date(this.getNext_thrift_date().plusWeeks(val));
                 }
             });
+
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
@@ -129,8 +133,10 @@ public class Thrift extends Beneficiary
 
     public void update()
     {
-        this.update_next_thrift_date();
-        this.update_index();
+        if(this.update_next_thrift_date())
+        {
+            this.update_index();
+        }
     }
 
     public void setsClassName()

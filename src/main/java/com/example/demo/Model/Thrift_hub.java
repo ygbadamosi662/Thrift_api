@@ -3,6 +3,7 @@ package com.example.demo.Model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 
@@ -23,9 +24,13 @@ public class Thrift_hub
     @JoinColumn( name = "thrift_id")
     private Thrift thrift;
 
+    @CreationTimestamp
     private LocalDate date;
 
-    private long thrift_index;
+    private long thriftIndex;
+
+    private int slot;
+
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "transaction_id", referencedColumnName = "transaction_id")
     private Transaction transaction;

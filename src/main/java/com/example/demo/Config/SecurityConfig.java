@@ -29,7 +29,7 @@ public class SecurityConfig
                 .csrf()
                 .disable()
                 .authorizeHttpRequests()
-                .requestMatchers("/api/v1/user/**").permitAll()
+                .requestMatchers("/api/v1/user/auth/**", "/api/v1/user/home").permitAll()
                 .requestMatchers("/api/v1/thrift/**").permitAll()
                 .requestMatchers("/api/v1/thrift/**").hasAuthority("THRIFTER")
                 .anyRequest().authenticated()
