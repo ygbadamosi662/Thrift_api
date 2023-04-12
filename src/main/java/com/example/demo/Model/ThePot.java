@@ -12,11 +12,9 @@ import java.time.LocalDate;
 public class ThePot
 {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="collection_id")
     private long id;
-
-    private long collection_amount;
 
     @ManyToOne(cascade= CascadeType.ALL)
     @JoinColumn(name = "user_id")
@@ -27,7 +25,7 @@ public class ThePot
     private Thrift thrift;
 
 
-    private long collection_index;
+    private long collectionIndex;
 
     @CreationTimestamp
     private LocalDate collection_date;

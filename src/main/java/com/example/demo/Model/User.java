@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ public class User extends Beneficiary implements UserDetails
 //    get and set thrift_list with gettingThrift_list() and settimgThrift_list() respectively
 //    thrift_list is the active thrift list of the user, a user can only have 3 active thrift max.
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column( name="user_id")
     private long id;
 
@@ -152,7 +153,8 @@ public class User extends Beneficiary implements UserDetails
 
     @Override
     public java.util.Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role.name()));
+        return authorities;
     }
 
     @Override

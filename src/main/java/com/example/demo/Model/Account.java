@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class Account extends Bank
 {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="acc_id")
     private long id;
 
@@ -38,8 +38,6 @@ public class Account extends Bank
     @UpdateTimestamp
     private LocalDateTime updated_on;
 
-//    @Nullable
-//    private String benUnique;
 
     @OneToOne(mappedBy = "userAccount")
     private User userBen;

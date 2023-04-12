@@ -61,11 +61,15 @@ public class UserController
         Map <String, Object> extraClaims = setExtraClaims(save);
         String jwt = jwtService.generateJwt(save,extraClaims);
 
-        Map <String, Object> accessToken = new HashMap<>();
-        accessToken.put("access token", jwt);
-        accessToken.put("message","Registration succesful");
+//        Map <String, Object> accessToken = new HashMap<>();
+//        accessToken.put("access token", jwt);
+//        accessToken.put("message","Registration succesful");
 
-        return ResponseEntity.ok(accessToken);
+        UserResponseDto resDto = new UserResponseDto(save);
+        resDto.setJwt(jwt);
+
+
+        return ResponseEntity.ok(resDto);
     }
 
     @PostMapping("/auth/login")
@@ -89,12 +93,12 @@ public class UserController
         authenticationManager.authenticate(token);
         Map <String,Object> xtraClaims = setExtraClaims(user);
         String jwt = jwtService.generateJwt(user,xtraClaims);
-        Map <String,Object> accessToken = new HashMap<>();
-        accessToken.put("jwt",jwt);
-        accessToken.put("msg","Login succesful");
+//        Map <String,Object> accessToken = new HashMap<>();
+//        accessToken.put("jwt",jwt);
+//        accessToken.put("msg","Login succesful");
         UserResponseDto dto = new UserResponseDto(user);
         dto.setJwt(jwt);
-        dto.setAccount(user.getUserAccount());
+        dto.setsAccount(user.getUserAccount());
         return ResponseEntity.ok(dto);
     }
 

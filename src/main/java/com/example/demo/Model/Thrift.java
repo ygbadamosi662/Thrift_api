@@ -22,7 +22,7 @@ import java.util.*;
 public class Thrift extends Beneficiary
 {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="thrift_id")
     private long id;
 
@@ -80,7 +80,7 @@ public class Thrift extends Beneficiary
     private Lifecycle cycle;
 
     @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "account_id", referencedColumnName = "acc_id")
+    @JoinColumn(name = "acc_id", referencedColumnName = "acc_id")
     private Account thriftAccount;
 
     public Thrift(){}

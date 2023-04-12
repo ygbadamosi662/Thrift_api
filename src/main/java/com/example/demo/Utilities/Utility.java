@@ -7,9 +7,8 @@ import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Side;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
+import com.example.demo.Services.ThriftAccountGenerator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;

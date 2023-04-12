@@ -30,10 +30,6 @@ import java.util.*;
 @RequestMapping("/api/v1/thrift")
 public class ThriftController
 {
-    private int multi;
-
-    private User user;
-
     private final ThrifterHistoryRepository historyRepository;
 
     private final AccountRepository accRepo;
@@ -46,8 +42,6 @@ public class ThriftController
 
     @Autowired
     private Utility util;
-    
-    private long member_limit;
 
     private final AuthenticationManager authenticationManager;
 
@@ -89,8 +83,7 @@ public class ThriftController
         Lifecycle cycle = Lifecycle.AWAITING;
         thrift.setCycle(cycle);
         Account acc = util.generateAcc(thrift);
-        accRepo.save(acc);
-        thrift.setThriftAccount(acc);
+        thrift.setThriftAccount(accRepo.save(acc));
         thriftsRepository.save(thrift);
 
         Thrift update = thriftsRepository.findById(thrift.getId()).get();
@@ -665,7 +658,6 @@ public class ThriftController
             hub.setTransaction(savedTrans);
             Thrift_hub savedHub = hubRepo.save(hub);
 
-            thrift.update();
             thrift.setCollection_available(util.availablePotCalc(thrift, thrift.getThrift_index()));
             if(thrift.getCycle().equals(Lifecycle.AWAITING))
             {
@@ -683,6 +675,122 @@ public class ThriftController
             return new ResponseEntity<>("Expecting " + isto.getSlot()*thrift.getPer_term_amnt()
                     + " Naira,got " + dto.getAmnt() ,
                     HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PostMapping("collect")
+    public ResponseEntity<?> collectThrift(@Valid @RequestBody CollectDto dto, HttpServletRequest req)
+    {
+        String authHeader = req.getHeader("Authorization");
+        String jwt = authHeader.substring("Bearer ".length());
+
+        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
+        }
+        Thrift thrift = byTicket.get();
+
+        if(!(user.equals(thrift.getOrganizer())))
+        {
+            return new ResponseEntity<>("Only the thrift organizer can pay out a thrift",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Optional<ThePot> byTwos = potRepo.findByThriftAndCollectionIndex(thrift, dto.getIndex());
+        if(byTwos.isPresent())
+        {
+            ThePot pot = byTwos.get();
+            ThePotResponseDto resDto = new ThePotResponseDto(pot);
+            resDto.setAll(pot);
+            resDto.setMore_info("Collection has already been paid out");
+
+            return new ResponseEntity<>(resDto, HttpStatus.BAD_REQUEST);
+        }
+
+        if(thrift.getCollection_amount() != thrift.getCollection_available())
+        {
+            return new ResponseEntity<>("Collection is not complete,collection available is "+
+                    thrift.getCollection_available()+"" + " but collection amount should be " +
+                    thrift.getCollection_amount(),
+                    HttpStatus.BAD_REQUEST);
+        }
+
+//        there is a big whole here that should handle actually sending the collection ammount
+//        to the user account but for lack of resources that will have to wait
+
+//        creating ThePot
+        if(dto.getEmail().equals("none"))
+        {
+            if(thrift.getCollector() == null)
+            {
+                return new ResponseEntity<>("Thrift collector is not set,set thrift collector",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            Transaction trans = new Transaction();
+            trans.setCredit_acc(thrift.getCollector().getUserAccount());
+            trans.setDebit_acc(thrift.getThriftAccount());
+            trans.setTypeOf(TypeOf.COLLECTION);
+            trans.setAmount(thrift.getCollection_available());
+            Transaction savedTrans = transRepo.save(trans);
+
+            ThePot pot = new ThePot();
+            pot.setCollector(thrift.getCollector());
+            pot.setThrift(thrift);
+            pot.setCollectionIndex(dto.getIndex());
+            pot.setTransaction(savedTrans);
+            ThePot savedPot = potRepo.save(pot);
+
+            thrift.update();
+            thriftsRepository.save(thrift);
+
+            ThePotResponseDto resDto = new ThePotResponseDto(pot);
+            resDto.setAll(pot);
+
+            return new ResponseEntity<>(resDto, HttpStatus.OK);
+        }
+        else
+        {
+            Optional<User> byEmail = userRepository.findByEmail(dto.getEmail());
+            if(byEmail.isEmpty())
+            {
+                return new ResponseEntity<>("User does not exist", HttpStatus.BAD_REQUEST);
+            }
+
+            if(util.is_member(byEmail.get(), thrift))
+            {
+                thrift.setCollector(byEmail.get());
+
+                Transaction trans = new Transaction();
+                trans.setCredit_acc(thrift.getCollector().getUserAccount());
+                trans.setDebit_acc(thrift.getThriftAccount());
+                trans.setTypeOf(TypeOf.COLLECTION);
+                trans.setAmount(thrift.getCollection_available());
+                Transaction savedTrans = transRepo.save(trans);
+
+                ThePot pot = new ThePot();
+                pot.setCollector(thrift.getCollector());
+                pot.setThrift(thrift);
+                pot.setCollectionIndex(dto.getIndex());
+                pot.setTransaction(savedTrans);
+                ThePot savedPot = potRepo.save(pot);
+
+                thrift.update();
+                thriftsRepository.save(thrift);
+
+                ThePotResponseDto resDto = new ThePotResponseDto(pot);
+                resDto.setAll(pot);
+
+                return new ResponseEntity<>(resDto, HttpStatus.OK);
+            }
+            else
+            {
+                return new ResponseEntity<>("User must be a member of the given thrift",
+                        HttpStatus.BAD_REQUEST);
+            }
         }
     }
 

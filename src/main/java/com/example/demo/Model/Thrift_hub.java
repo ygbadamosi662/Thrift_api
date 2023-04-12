@@ -13,7 +13,7 @@ import java.time.LocalDate;
 public class Thrift_hub
 {
     @Id
-    @GeneratedValue( strategy  = GenerationType.IDENTITY)
+    @GeneratedValue( strategy  = GenerationType.AUTO)
     private long id;
 
     @ManyToOne(cascade = CascadeType.ALL)

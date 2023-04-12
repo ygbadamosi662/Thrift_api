@@ -4,23 +4,25 @@ import com.example.demo.Model.ThePot;
 import com.example.demo.Model.Thrift;
 import com.example.demo.Model.Transaction;
 import com.example.demo.Model.User;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
+@Setter
+@Getter
 public class ThePotResponseDto extends ResponseDto
 {
 
     private long id;
 
-    private long collection_amount;
+    private String more_info;
 
     private UserResponseDto collector;
 
-
     private ThriftResponseDto thrift;
 
-
-    private long collection_index;
+    private long collectionIndex;
 
     private String collection_date;
 
@@ -31,8 +33,7 @@ public class ThePotResponseDto extends ResponseDto
     public ThePotResponseDto(ThePot pot)
     {
         this.id = pot.getId();
-        this.collection_amount = pot.getCollection_amount();
-        this.collection_index = pot.getCollection_index();
+        this.collectionIndex = pot.getCollectionIndex();
     }
 
     public void setThrift(Thrift thrift)

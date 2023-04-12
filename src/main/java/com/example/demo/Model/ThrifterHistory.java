@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class ThrifterHistory extends ResponseDto
 {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="history_id")
     private long id;
 

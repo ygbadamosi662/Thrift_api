@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class Transaction
 {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="transaction_id")
     private long id;
 

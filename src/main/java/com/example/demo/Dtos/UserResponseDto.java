@@ -42,7 +42,7 @@ public class UserResponseDto extends ResponseDto
         this.phone = user.getPhone();
     }
 
-    public void setAccount(Account acc)
+    public void setsAccount(Account acc)
     {
         if(!(acc == null))
         {
