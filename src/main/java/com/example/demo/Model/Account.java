@@ -40,10 +40,10 @@ public class Account extends Bank
     private LocalDateTime updated_on;
 
 
-    @OneToOne(mappedBy = "userAccount")
+    @OneToOne(mappedBy = "account")
     private User userBen;
 
-    @OneToOne(mappedBy = "thriftAccount")
+    @OneToOne(mappedBy = "account")
     private Thrift thriftBen;
 
     public Account(){}

@@ -50,7 +50,7 @@ public class ThrifterHistoryResponseDto extends ResponseDto
         if(user != null)
         {
             UserResponseDto dto = new UserResponseDto(user);
-            dto.setsAccount(user.getUserAccount());
+            dto.setsAccount(user.getAccount());
             this.user = dto;
         }
     }

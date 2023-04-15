@@ -21,6 +21,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ApplicationConfig
 {
+
     private final UserRepository userRepository;
 
     @Bean

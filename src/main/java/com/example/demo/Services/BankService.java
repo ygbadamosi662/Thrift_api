@@ -56,10 +56,17 @@ public class BankService
     {
         Long active = accRepo.countBySide(Side.ACTIVE);
         Long inactive = accRepo.countBySide(Side.INACTIVE);
+
+        if((active+inactive) == 0)
+        {
+            return null;
+        }
+
         Map<String, Map<String, Double>> all = new HashMap<>();
 
         Map<String, Double> info = new HashMap<>();
         info.put("activeAcc", (double) active);
+
         info.put("percentage", util.percentage(active, active+inactive));
         all.put("active", info);
 
@@ -94,7 +101,7 @@ public class BankService
             return null;
         }
 
-        List<Thrift> thrifts = thriftsRepository.findByThriftAccount(byId.get());
+        List<Thrift> thrifts = thriftsRepository.findByAccount(byId.get());
 
         return thrifts;
     }
@@ -114,9 +121,14 @@ public class BankService
 
                 int index = 0;
                 for (Account acc : accs) {
-                    nullAccs.get(index).setThriftAccount(acc);
-                    lll.add(thriftsRepository.save(nullAccs.get(index)));
-                    index = index + 1;
+                    if(nullAccs.size() > index)
+                    {
+                        acc.setSide(Side.ACTIVE);
+                        nullAccs.get(index).setAccount(acc);
+                        lll.add(thriftsRepository.save(nullAccs.get(index)));
+                        index = index + 1;
+                    }
+
                 }
                 res.put("asigned", lll);
             }
@@ -132,9 +144,10 @@ public class BankService
 
     public List<Thrift> getUnasigned(int page, int size)
     {
-        Pageable pageRequest = PageRequest.of(page-1, size,
-                Sort.by("thrift_start").descending());
-        List<Thrift> unasigned = thriftsRepository.findByThriftAccount(null, pageRequest);
+        Pageable pageRequest = PageRequest.of(page-1, size
+                );
+//        Sort.by("thrift_start").descending()
+        List<Thrift> unasigned = thriftsRepository.findByAccount(null, pageRequest);
 
         return unasigned;
     }

@@ -49,8 +49,6 @@ public class AdminController
 
     private final ThePotRepository potRepo;
 
-//    @Autowired
-    private final Utility util;
 
     private final AuthenticationManager authenticationManager;
 
@@ -90,7 +88,7 @@ public class AdminController
 
         users.forEach((one) ->{
             UserResponseDto dto = new UserResponseDto(one);
-            dto.setsAccount(one.getUserAccount());
+            dto.setsAccount(one.getAccount());
             listDto.add(dto);
         });
         System.out.println("got here");
@@ -182,11 +180,11 @@ public class AdminController
     public ResponseEntity<?> getAllOrgs(@Valid @RequestParam int page,
                                            HttpServletRequest request)
     {
-        Pageable pageable = PageRequest.of(page, 50);
+        Pageable pageable = PageRequest.of(page-1, 50);
         List<UserResponseDto> dtos = new ArrayList<>();
         serve.getAllOrganizers(pageable).forEach((org)-> {
             UserResponseDto dto = new UserResponseDto(org);
-            dto.setsAccount(org.getUserAccount());
+            dto.setsAccount(org.getAccount());
             dtos.add(dto);
         });
 
@@ -222,7 +220,7 @@ public class AdminController
         try
         {
             resDto = new UserResponseDto(user);
-            resDto.setsAccount(user.getUserAccount());
+            resDto.setsAccount(user.getAccount());
         }
         catch (NullPointerException e)
         {
@@ -306,8 +304,6 @@ public class AdminController
     public ResponseEntity<?> allHouseAssing(@Valid HttpServletRequest request)
     {
 //        assigns account to thrifts with no account according to the availabilty of accounts
-
-
         Map<String, List<Thrift>> all = bankServe.afterHours();
         if(all == null)
         {
@@ -361,7 +357,7 @@ public class AdminController
         try
         {
             bankServe.getUnasigned(page, 50).forEach((thrift)-> {
-                ThriftResponseDto dto = new ThriftResponseDto();
+                ThriftResponseDto dto = new ThriftResponseDto(thrift);
                 dto.setAllWeirdAssClasses(thrift);
                 dtos.add(dto);
             });

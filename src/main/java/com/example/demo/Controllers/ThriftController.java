@@ -91,7 +91,7 @@ public class ThriftController
 
         if(bankServe.ActiveToInactiveInfo().get("inactive").get("inactiveAcc") > 0)
         {
-            thrift.setThriftAccount(bankServe.assignAcc());
+            thrift.setAccount(bankServe.assignAcc());
         }
         else
         {
@@ -619,8 +619,8 @@ public class ThriftController
         {
 //            creating transaction
             Transaction trans = new Transaction();
-            trans.setDebit_acc(user.getUserAccount());
-            trans.setCredit_acc(thrift.getThriftAccount());
+            trans.setDebit_acc(user.getAccount());
+            trans.setCredit_acc(thrift.getAccount());
             trans.setAmount(dto.getAmnt());
             trans.setTypeOf(TypeOf.THRIFT);
             Transaction savedTrans = transRepo.save(trans);
@@ -707,8 +707,8 @@ public class ThriftController
             }
 
             Transaction trans = new Transaction();
-            trans.setCredit_acc(thrift.getCollector().getUserAccount());
-            trans.setDebit_acc(thrift.getThriftAccount());
+            trans.setCredit_acc(thrift.getCollector().getAccount());
+            trans.setDebit_acc(thrift.getAccount());
             trans.setTypeOf(TypeOf.COLLECTION);
             trans.setAmount(thrift.getCollection_available());
             Transaction savedTrans = transRepo.save(trans);
@@ -741,8 +741,8 @@ public class ThriftController
                 thrift.setCollector(byEmail.get());
 
                 Transaction trans = new Transaction();
-                trans.setCredit_acc(thrift.getCollector().getUserAccount());
-                trans.setDebit_acc(thrift.getThriftAccount());
+                trans.setCredit_acc(thrift.getCollector().getAccount());
+                trans.setDebit_acc(thrift.getAccount());
                 trans.setTypeOf(TypeOf.COLLECTION);
                 trans.setAmount(thrift.getCollection_available());
                 Transaction savedTrans = transRepo.save(trans);

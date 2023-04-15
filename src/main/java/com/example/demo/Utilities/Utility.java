@@ -435,7 +435,18 @@ public class Utility
 
     public double percentage(Long of, Long in)
     {
-        return (of/in) * 100;
+        Long percent = null;
+
+        try
+        {
+             percent = (of/in) * 100;
+        }
+        catch (ArithmeticException e)
+        {
+            System.out.println(e.getMessage());;
+        }
+
+        return percent;
     }
 
     public List<Thrift> get_completed(User user)

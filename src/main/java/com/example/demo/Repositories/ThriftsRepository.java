@@ -15,17 +15,15 @@ public interface ThriftsRepository extends JpaRepository<Thrift,Long>
 {
     Optional<Thrift> findById(long id);
 
-    Optional<Thrift> findByOrganizerAndThriftName(User organizer, String name);
-
     Optional<Thrift> findByTicket(String ticket);
 
     long countByOrganizer(User organizer);
 
     List<Thrift> findByOrganizer(User organizer);
 
-    List<Thrift> findByThriftAccount(Account account);
+    List<Thrift> findByAccount(Account account);
 
-    List<Thrift> findByThriftAccount(Account account, Pageable pageable);
+    List<Thrift> findByAccount(Account account, Pageable pageable);
 
 
 }

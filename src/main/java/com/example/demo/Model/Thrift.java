@@ -77,7 +77,7 @@ public class Thrift extends Beneficiary
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "acc_id", referencedColumnName = "acc_id")
-    private Account thriftAccount;
+    private Account account;
 
     public Thrift(){}
 

@@ -51,7 +51,7 @@ public class ThePotResponseDto extends ResponseDto
         if(collector != null)
         {
             UserResponseDto dto = new UserResponseDto(collector);
-            dto.setsAccount(collector.getUserAccount());
+            dto.setsAccount(collector.getAccount());
             this.collector = dto;
         }
     }

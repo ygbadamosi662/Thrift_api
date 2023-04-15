@@ -61,7 +61,7 @@ public class User extends Beneficiary implements UserDetails
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "account_id", referencedColumnName = "acc_id")
-    private Account userAccount;
+    private Account account;
 
     @CreationTimestamp
     private LocalDateTime created_on;

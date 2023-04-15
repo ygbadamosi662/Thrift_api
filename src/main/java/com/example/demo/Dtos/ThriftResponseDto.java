@@ -71,7 +71,7 @@ public class ThriftResponseDto extends ResponseDto
         if(thrift.getOrganizer() != null)
         {
             UserResponseDto dto = new UserResponseDto(thrift.getOrganizer());
-            dto.setsAccount(thrift.getOrganizer().getUserAccount());
+            dto.setsAccount(thrift.getOrganizer().getAccount());
             this.organizer = dto;
         }
     }
@@ -81,16 +81,16 @@ public class ThriftResponseDto extends ResponseDto
         if(thrift.getCollector() != null)
         {
             UserResponseDto dto = new UserResponseDto(thrift.getCollector());
-            dto.setsAccount(thrift.getCollector().getUserAccount());
+            dto.setsAccount(thrift.getCollector().getAccount());
             this.collector = dto;
         }
     }
 
     public void setAccount(Thrift thrift)
     {
-        if(thrift.getThriftAccount() != null)
+        if(thrift.getAccount() != null)
         {
-            AccountResponseDto dto= new AccountResponseDto(thrift.getThriftAccount());
+            AccountResponseDto dto= new AccountResponseDto(thrift.getAccount());
             this.account = dto;
         }
     }

@@ -14,6 +14,7 @@ import com.example.demo.Services.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -37,7 +38,9 @@ public class UserController
     private final JwtService jwtService;
 
     private final PasswordEncoder passwordEncoder;
-    private final UserRepository userRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private final AccountRepository accRepo;
 
@@ -101,12 +104,18 @@ public class UserController
 
         UserResponseDto dto = new UserResponseDto(user);
         dto.setJwt(jwt);
-        dto.setsAccount(user.getUserAccount());
-        if(user.getRole().equals(Role.ADMIN) &&
-                (bankServe.ActiveToInactiveInfo().get("inactive").get("percentage") < 50))
+        dto.setsAccount(user.getAccount());
+        Map<String, Map<String, Double>> all = bankServe.ActiveToInactiveInfo();
+
+        if(!(all == null))
         {
-            dto.setMore_info("Available accounts is low");
+            if(user.getRole().equals(Role.ADMIN) &&
+                    (all.get("inactive").get("percentage") < 50))
+            {
+                dto.setMore_info("Available accounts is low");
+            }
         }
+
 
         return ResponseEntity.ok(dto);
     }
@@ -124,12 +133,12 @@ public class UserController
         accRepo.save(acc);
         System.out.println(acc.getId());
 
-        if(user.getUserAccount() != null)
+        if(user.getAccount() != null)
         {
-            Account formerAcc = user.getUserAccount();
+            Account formerAcc = user.getAccount();
             accRepo.delete(accRepo.findById(formerAcc.getId()).get());
         }
-        user.setUserAccount(acc);
+        user.setAccount(acc);
 
         acc.setsBen();
         AccountResponseDto resDto = new AccountResponseDto();
