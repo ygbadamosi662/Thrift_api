@@ -3,16 +3,11 @@ package com.example.demo.Dtos;
 import com.example.demo.Enums.Account_type;
 import com.example.demo.Enums.Side;
 import com.example.demo.Model.Account;
-import com.example.demo.Model.Beneficiary;
 import com.example.demo.Model.Thrift;
 import com.example.demo.Model.User;
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.Getter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
 @Getter
 public class AccountResponseDto extends ResponseDto
 {
@@ -46,15 +41,26 @@ public class AccountResponseDto extends ResponseDto
 
     public void setsBen(Account account)
     {
-        if(account.getBen().getClassName().equals("User"))
+        try
         {
-            User user = (User) account.getBen();
-            this.ben = new UserResponseDto(user);
+            if(account.getBen().getClassName().equals("User"))
+            {
+                User user = (User) account.getBen();
+                this.ben = new UserResponseDto(user);
+            }
+            else if(account.getBen().getClassName().equals("User"))
+            {
+                Thrift thrift = (Thrift) account.getBen();
+                this.ben = new ThriftResponseDto(thrift);
+            }
         }
-        else if(account.getBen().getClassName().equals("User"))
+        catch (NullPointerException e)
         {
-            Thrift thrift = (Thrift) account.getBen();
-            this.ben = new ThriftResponseDto(thrift);
+            this.setMore_info("beneficiary is null");
+        }
+        finally
+        {
+            return;
         }
     }
 }

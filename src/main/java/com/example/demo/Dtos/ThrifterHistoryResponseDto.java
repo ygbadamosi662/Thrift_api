@@ -6,10 +6,13 @@ import com.example.demo.Model.Thrift_hub;
 import com.example.demo.Model.ThrifterHistory;
 import com.example.demo.Model.User;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-
+@Getter
+@Setter
 public class ThrifterHistoryResponseDto extends ResponseDto
 {
     private long id;
@@ -36,7 +39,9 @@ public class ThrifterHistoryResponseDto extends ResponseDto
     {
         if(thrift != null)
         {
-            this.thrift = new ThriftResponseDto(thrift);
+            ThriftResponseDto dto = new ThriftResponseDto(thrift);
+            dto.setAllWeirdAssClasses(thrift);
+            this.thrift = dto;
         }
     }
 
@@ -44,7 +49,9 @@ public class ThrifterHistoryResponseDto extends ResponseDto
     {
         if(user != null)
         {
-            this.user = new UserResponseDto(user);
+            UserResponseDto dto = new UserResponseDto(user);
+            dto.setsAccount(user.getUserAccount());
+            this.user = dto;
         }
     }
 

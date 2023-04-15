@@ -1,4 +1,4 @@
-package com.example.demo.Model;
+package com.example.demo.JustClasses;
 
 import com.example.demo.Repositories.AccountRepository;
 import jakarta.persistence.*;

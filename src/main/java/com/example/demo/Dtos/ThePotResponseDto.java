@@ -40,7 +40,9 @@ public class ThePotResponseDto extends ResponseDto
     {
         if(thrift != null)
         {
-            this.thrift = new ThriftResponseDto(thrift);
+            ThriftResponseDto dto = new ThriftResponseDto(thrift);
+            dto.setAllWeirdAssClasses(thrift);
+            this.thrift = dto;
         }
     }
 
@@ -48,7 +50,9 @@ public class ThePotResponseDto extends ResponseDto
     {
         if(collector != null)
         {
-            this.collector = new UserResponseDto(collector);
+            UserResponseDto dto = new UserResponseDto(collector);
+            dto.setsAccount(collector.getUserAccount());
+            this.collector = dto;
         }
     }
 
@@ -56,7 +60,9 @@ public class ThePotResponseDto extends ResponseDto
     {
         if(trans != null)
         {
-            this.transaction = new TransactionResponseDto(trans);
+            TransactionResponseDto dto = new TransactionResponseDto(trans);
+            dto.setAllWeirdAssClasses(trans);
+            this.transaction = dto;
         }
     }
 

@@ -16,6 +16,8 @@ public class ResponseDto
     private String dateTimeFormat = "MM dd, YYYY HH:mm:ss a";
 
     private String jwt;
+
+    private String more_info;
     public String getStringDate(LocalDate date)
     {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM dd, YYYY");

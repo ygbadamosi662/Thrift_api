@@ -1,6 +1,7 @@
 package com.example.demo.Controllers;
 
 import com.example.demo.Dtos.*;
+import com.example.demo.Enums.Role;
 import com.example.demo.Enums.Side;
 import com.example.demo.Model.Account;
 import com.example.demo.Model.Thrift;
@@ -8,6 +9,7 @@ import com.example.demo.Model.User;
 import com.example.demo.Repositories.AccountRepository;
 import com.example.demo.Repositories.ThriftsRepository;
 import com.example.demo.Repositories.UserRepository;
+import com.example.demo.Services.BankService;
 import com.example.demo.Services.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -38,6 +40,8 @@ public class UserController
     private final UserRepository userRepository;
 
     private final AccountRepository accRepo;
+
+    private final BankService bankServe;
 
     @PostMapping("/home")
     public String mean ()
@@ -93,12 +97,17 @@ public class UserController
         authenticationManager.authenticate(token);
         Map <String,Object> xtraClaims = setExtraClaims(user);
         String jwt = jwtService.generateJwt(user,xtraClaims);
-//        Map <String,Object> accessToken = new HashMap<>();
-//        accessToken.put("jwt",jwt);
-//        accessToken.put("msg","Login succesful");
+
+
         UserResponseDto dto = new UserResponseDto(user);
         dto.setJwt(jwt);
         dto.setsAccount(user.getUserAccount());
+        if(user.getRole().equals(Role.ADMIN) &&
+                (bankServe.ActiveToInactiveInfo().get("inactive").get("percentage") < 50))
+        {
+            dto.setMore_info("Available accounts is low");
+        }
+
         return ResponseEntity.ok(dto);
     }
 

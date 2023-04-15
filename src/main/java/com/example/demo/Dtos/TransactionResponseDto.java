@@ -37,7 +37,9 @@ public class TransactionResponseDto extends ResponseDto
     {
         if(acc != null)
         {
-            this.debit_acc = new AccountResponseDto(acc);
+            AccountResponseDto dto= new AccountResponseDto(acc);
+            dto.setsBen(acc);
+            this.debit_acc = dto;
         }
     }
 
@@ -45,7 +47,9 @@ public class TransactionResponseDto extends ResponseDto
     {
         if(acc != null)
         {
-            this.credit_acc = new AccountResponseDto(acc);
+            AccountResponseDto dto= new AccountResponseDto(acc);
+            dto.setsBen(acc);
+            this.credit_acc = dto;
         }
     }
 

@@ -7,7 +7,7 @@ import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Side;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
-import com.example.demo.Services.ThriftAccountGenerator;
+import com.example.demo.JustClasses.ThriftAccountGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -39,11 +39,11 @@ public class Utility
     {
 //        returns a list of every thrifter that are participating in thrift
         List<User> members = new ArrayList<>();
-        List<ThrifterHistory> byThriftId = historyRepository.findByThrift(thrift);
+        List<ThrifterHistory> byThrift = historyRepository.findByThrift(thrift);
 
-        for (int i = 0; i < byThriftId.size(); i++)
+        for (int i = 0; i < byThrift.size(); i++)
         {
-            members.add(byThriftId.get(i).getUser());
+            members.add(byThrift.get(i).getUser());
         }
 
         return members;
@@ -64,17 +64,28 @@ public class Utility
         return present;
     }
 
-    public boolean slotsManager(Thrift thrift, int slot)
+    public Thrift slotsManager(Thrift thrift, int slot)
     {
         thrift.setSlots(thrift.getSlots() + slot);
 
         if(this.duration_chk(thrift) == false)
         {
-            return false;
+            System.out.println(this.duration_chk(thrift));
+            Thrift thrick = new Thrift();
+            return thrick;
         }
 
         thrift.setCollection_amount(this.collectionCalc(thrift));
-        thriftsRepository.save(thrift);
+        System.out.println(thrift);
+        return thrift;
+    }
+
+    public boolean slotsAssistantManager(Thrift thrift)
+    {
+        if(thrift == null)
+        {
+            return false;
+        }
 
         return true;
     }
@@ -99,8 +110,10 @@ public class Utility
                 this.multi = weeks;
             }
         });
-        LocalDate thrift_end = patsy.getThrift_start()
-                .plusWeeks(multi * patsy.getSlots());
+        System.out.println(patsy.getThrift_start());
+        System.out.println(patsy.getSlots());
+        LocalDate thrift_end = patsy.getThrift_start().plusWeeks(multi * patsy.getSlots());
+        System.out.println(patsy.getThrift_start().plusWeeks(4));
 
         return thrift_end;
     }
@@ -125,7 +138,8 @@ public class Utility
             }
         });
 
-        return longest <= (multi * thrift.getSlots());
+        System.out.println("slots: "+thrift.getSlots()+"multi: "+multi);
+        return longest >= (multi * thrift.getSlots());
     }
 
     public long collectionCalc(Thrift thrift)
@@ -395,9 +409,13 @@ public class Utility
             ThrifterHistory org = historyRepository.findByThriftAndUser(thrift, member).get();
             List<ThrifterHistory> all = historyRepository.findByThrift(thrift);
             all.forEach((istory)->{
-                historyRepository.deleteById(istory.getId());
+                istory.setUser(new User());
+                istory.setThrift(new Thrift());
+
+                historyRepository.deleteById(historyRepository.save(istory).getId());
             });
-            member.editThriftList(thrift.getId());
+            thrift.setOrganizer(new User());
+            thriftsRepository.delete(thriftsRepository.save(thrift));
             return org;
         }
         Optional<ThrifterHistory> byThriftAndUser = historyRepository.
@@ -411,22 +429,13 @@ public class Utility
         this.minus_slot(thrift, istory.getSlot());
         thrift.setCollection_amount(this.collectionCalc(thrift));
         thriftsRepository.save(thrift);
-        member.editThriftList(thrift.getId());
 
         return istory;
     }
 
-    public Account generateAcc(Thrift thrift)
+    public double percentage(Long of, Long in)
     {
-        ThriftAccountGenerator genAcc = new ThriftAccountGenerator();
-        Account acc = new Account();
-        acc.setAcc_num(genAcc.generateAccNum());
-        acc.setBank(genAcc.getBank());
-        acc.setAcc_name(thrift.getOrganizer().getFname() + " " + thrift.getOrganizer().getLname());
-        acc.setAccount_type(Account_type.SAVINGS);
-        acc.setSide(Side.THRIFT);
-
-        return acc;
+        return (of/in) * 100;
     }
 
     public List<Thrift> get_completed(User user)

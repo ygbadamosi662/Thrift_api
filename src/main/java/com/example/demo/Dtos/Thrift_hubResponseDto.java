@@ -4,9 +4,13 @@ import com.example.demo.Model.Thrift;
 import com.example.demo.Model.Thrift_hub;
 import com.example.demo.Model.Transaction;
 import com.example.demo.Model.User;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
+@Getter
+@Setter
 public class Thrift_hubResponseDto extends ResponseDto
 {
     private long id;
@@ -33,7 +37,9 @@ public class Thrift_hubResponseDto extends ResponseDto
     {
         if(thrift != null)
         {
-            this.thrift = new ThriftResponseDto(thrift);
+            ThriftResponseDto dto = new ThriftResponseDto(thrift);
+            dto.setAllWeirdAssClasses(thrift);
+            this.thrift = dto;
         }
     }
 
@@ -41,7 +47,9 @@ public class Thrift_hubResponseDto extends ResponseDto
     {
         if(user != null)
         {
-            this.user = new UserResponseDto(user);
+            UserResponseDto dto = new UserResponseDto(user);
+            dto.setsAccount(user.getUserAccount());
+            this.user = dto;
         }
     }
 

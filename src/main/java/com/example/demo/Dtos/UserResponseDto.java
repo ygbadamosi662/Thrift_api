@@ -9,10 +9,6 @@ import lombok.Getter;
 @Getter
 public class UserResponseDto extends ResponseDto
 {
-
-    private String thrift_list;
-
-    private String password;
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -32,8 +28,6 @@ public class UserResponseDto extends ResponseDto
 
     public UserResponseDto(User user)
     {
-        this.thrift_list = user.getThrift_list();
-        this.password = user.getPassword();
         this.role = user.getRole();
         this.fname = user.getFname();
         this.lname = user.getLname();

@@ -27,14 +27,11 @@ public class CreateThriftDto
     @Size(min = 5,max = 25)
     private String thriftName;
 
-    @Enumerated(EnumType.STRING)
-    public Term term;
+    public String term;
 
     @NotNull
     private long per_term_amnt;
 
-
-//    @JsonDeserialize(using = DateHandler.class)
     private String thrift_start;
 
     private Lifecycle cycle = Lifecycle.AWAITING;
@@ -46,7 +43,7 @@ public class CreateThriftDto
     {
         Thrift thrift = new Thrift();
         thrift.setThriftName(this.thriftName);
-        thrift.setTerm(this.term);
+        thrift.setTerm(Term.valueOf(this.term));
         thrift.setPer_term_amnt(this.per_term_amnt);
         thrift.setThrift_start(this.setting_start());
         thrift.setNext_thrift_date(this.setting_start());

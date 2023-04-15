@@ -1,9 +1,7 @@
-package com.example.demo.Model;
+package com.example.demo.JustClasses;
 
-import com.example.demo.Repositories.AccountRepository;
 import com.example.demo.Repositories.ThriftsRepository;
 import com.example.demo.Repositories.UserRepository;
-import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;

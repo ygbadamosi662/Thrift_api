@@ -5,7 +5,7 @@ import lombok.Getter;
 @Getter
 public class CollectorDto
 {
-    private String userEmail;
-
     private String ticket;
+
+    private String email;
 }

@@ -43,7 +43,7 @@ public class ThriftResponseDto extends ResponseDto
 
     private long collection_amount;
 
-    private long slots;
+    private int slots;
 
     private String next_thrift_date;
 
@@ -66,28 +66,32 @@ public class ThriftResponseDto extends ResponseDto
         this.id = thrift.getId();
     }
 
-    public void setOrganizer(User user)
+    public void setOrganizer(Thrift thrift)
     {
-        System.out.println(user);
-        if(user != null)
+        if(thrift.getOrganizer() != null)
         {
-            this.organizer = new UserResponseDto(user);
+            UserResponseDto dto = new UserResponseDto(thrift.getOrganizer());
+            dto.setsAccount(thrift.getOrganizer().getUserAccount());
+            this.organizer = dto;
         }
     }
 
-    public void setCollector(User user)
+    public void setCollector(Thrift thrift)
     {
-        if(user != null)
+        if(thrift.getCollector() != null)
         {
-            this.collector = new UserResponseDto(user);
+            UserResponseDto dto = new UserResponseDto(thrift.getCollector());
+            dto.setsAccount(thrift.getCollector().getUserAccount());
+            this.collector = dto;
         }
     }
 
-    public void setAccount(Account acc)
+    public void setAccount(Thrift thrift)
     {
-        if(acc != null)
+        if(thrift.getThriftAccount() != null)
         {
-            this.account = new AccountResponseDto(acc);
+            AccountResponseDto dto= new AccountResponseDto(thrift.getThriftAccount());
+            this.account = dto;
         }
     }
 
@@ -106,9 +110,9 @@ public class ThriftResponseDto extends ResponseDto
 
     public void setAllWeirdAssClasses(Thrift thrift)
     {
-        this.setAccount(thrift.getThriftAccount());
-        this.setOrganizer(thrift.getOrganizer());
-        this.setCollector(thrift.getCollector());
+        this.setAccount(thrift);
+        this.setOrganizer(thrift);
+        this.setCollector(thrift);
         this.setThrift_dates(thrift);
     }
 

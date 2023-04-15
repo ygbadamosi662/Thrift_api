@@ -7,7 +7,8 @@ public class CollectDto
 {
     private String ticket;
 
+    private String email = "none";
+
     private long index;
 
-    private String email = "none";
 }

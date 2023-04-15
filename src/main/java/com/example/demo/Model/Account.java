@@ -3,6 +3,7 @@ package com.example.demo.Model;
 import com.example.demo.Dtos.AddAccDto;
 import com.example.demo.Enums.Account_type;
 import com.example.demo.Enums.Side;
+import com.example.demo.JustClasses.Bank;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

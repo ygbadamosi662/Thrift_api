@@ -2,22 +2,18 @@ package com.example.demo.Model;
 
 import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Term;
-import com.example.demo.Repositories.ThrifterHistoryRepository;
-import com.example.demo.Repositories.ThriftsRepository;
+import com.example.demo.JustClasses.Beneficiary;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Getter
 @Setter
-//@RequiredArgsConstructor
 @Entity
 public class Thrift extends Beneficiary
 {

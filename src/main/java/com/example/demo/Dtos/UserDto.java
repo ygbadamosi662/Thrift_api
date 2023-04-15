@@ -43,7 +43,7 @@ public class UserDto
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    private Role role = Role.THRIFTER;
+    private Role role;
 
     public User getUser ()
     {
