@@ -3,27 +3,30 @@ package com.example.demo.Controllers;
 import com.example.demo.Dtos.*;
 import com.example.demo.Enums.Role;
 import com.example.demo.Enums.Side;
+import com.example.demo.JustClasses.Jwt;
 import com.example.demo.Model.Account;
+import com.example.demo.Model.JwtBlacklist;
 import com.example.demo.Model.Thrift;
 import com.example.demo.Model.User;
 import com.example.demo.Repositories.AccountRepository;
+import com.example.demo.Repositories.JwtBlacklistRepository;
 import com.example.demo.Repositories.ThriftsRepository;
 import com.example.demo.Repositories.UserRepository;
 import com.example.demo.Services.BankService;
 import com.example.demo.Services.JwtService;
+import com.example.demo.Utilities.Utility;
+import jakarta.persistence.PersistenceException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
@@ -32,29 +35,36 @@ import java.util.*;
 @RequestMapping("/api/v1/user")
 public class UserController
 {
-//    create a virtual bank account generator,name of account being thrift string id
+
     private final AuthenticationManager authenticationManager;
 
     private final JwtService jwtService;
 
+    private final Jwt jwtObj;
+
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+
+    private final JwtBlacklistRepository jwtBlacklistRepo;
 
     private final AccountRepository accRepo;
 
     private final BankService bankServe;
 
+    private final Utility util;
+
     @PostMapping("/home")
-    public String mean ()
+    public ResponseEntity<?> mean ()
     {
-        return "I got a whole new chick,Mean!";
+        return ResponseEntity.ok("Welcome to Thrift_api, whats up?");
     }
 
     @PostMapping("/auth/register")
     public ResponseEntity<?> register(@Valid @RequestBody UserDto user)
     {
+        System.out.println("hey hey");
         Optional<User> chk_chk = userRepository.findByEmail( user.getEmail());
 
         if(chk_chk.isPresent())
@@ -79,6 +89,32 @@ public class UserController
         return ResponseEntity.ok(resDto);
     }
 
+    @PostMapping("/signout")
+    public ResponseEntity<?> signOut(@Valid HttpServletRequest req)
+    {
+        String jwt = jwtObj.setJwt(req);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
+        try
+        {
+            JwtBlacklist cancelled = new JwtBlacklist();
+            cancelled.setJwt(jwt);
+            jwtBlacklistRepo.save(cancelled);
+        }
+        catch (PersistenceException e)
+        {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+
+        return new ResponseEntity<>("User is successfully signed out", HttpStatus.OK);
+    }
+
     @PostMapping("/auth/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginDto login)
     {
@@ -101,6 +137,8 @@ public class UserController
         Map <String,Object> xtraClaims = setExtraClaims(user);
         String jwt = jwtService.generateJwt(user,xtraClaims);
 
+//        HttpHeaders header = new HttpHeaders();
+//        header.add("Authorization", "Bearer " + jwt);
 
         UserResponseDto dto = new UserResponseDto(user);
         dto.setJwt(jwt);
@@ -123,10 +161,15 @@ public class UserController
     @PostMapping("addAcc")
     public ResponseEntity<?> addAcc(@Valid @RequestBody AddAccDto dto, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        User user = jwtObj.giveUser();
 
         Account acc = new Account(dto);
         acc.setSide(Side.USER);
@@ -156,7 +199,4 @@ public class UserController
 
         return extraClaims;
     }
-
-
-
 }

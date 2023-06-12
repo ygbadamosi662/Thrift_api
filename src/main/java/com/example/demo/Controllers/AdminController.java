@@ -6,6 +6,7 @@ import com.example.demo.Enums.Consent;
 import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Role;
 import com.example.demo.Enums.Side;
+import com.example.demo.JustClasses.Jwt;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
 import com.example.demo.Services.BankService;
@@ -63,11 +64,23 @@ public class AdminController
 
     private final BankService bankServe;
 
+    @Autowired
+    private Jwt jwtObj;
+
 
     @PostMapping("/users")
     public ResponseEntity<?> getAllUsers(@Valid @RequestParam int page,@RequestParam String role,
                                          HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         List<String> roles = new ArrayList<>();
         roles.add(Role.THRIFTER.name());
         roles.add(Role.ADMIN.name());
@@ -98,6 +111,15 @@ public class AdminController
     @PostMapping("/thrifts")
     public ResponseEntity<?> getAllThrifts(@Valid @RequestParam int page, HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         Pageable pages = PageRequest.of(page, 50);
 
         Page<Thrift> thrifts = thriftsRepository.findAll(pages);
@@ -120,6 +142,15 @@ public class AdminController
     @PostMapping("/thrift")
     public ResponseEntity<?> getThrift(@Valid @RequestParam String ticket, HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
         if (byTicket.isEmpty())
         {
@@ -136,6 +167,15 @@ public class AdminController
     public ResponseEntity<?> getPayHistory(@Valid @RequestParam String ticket,
                                               HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
         if (byTicket.isEmpty())
         {
@@ -158,6 +198,15 @@ public class AdminController
     public ResponseEntity<?> getPotHistory(@Valid @RequestParam String ticket,
                                            HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
         if (byTicket.isEmpty())
         {
@@ -180,6 +229,15 @@ public class AdminController
     public ResponseEntity<?> getAllOrgs(@Valid @RequestParam int page,
                                            HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         Pageable pageable = PageRequest.of(page-1, 50);
         List<UserResponseDto> dtos = new ArrayList<>();
         serve.getAllOrganizers(pageable).forEach((org)-> {
@@ -194,7 +252,16 @@ public class AdminController
     @PostMapping("user")
     public ResponseEntity<?> getUser(@Valid @RequestBody AllThriftDto dto, HttpServletRequest request)
     {
-        User user = new User();
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
+        User reqUser = new User();
         UserResponseDto resDto = new UserResponseDto();
 
         if(dto.getEmail().equals("none"))
@@ -204,7 +271,7 @@ public class AdminController
             {
                 return new ResponseEntity<>("User does not exist", HttpStatus.BAD_REQUEST);
             }
-            user = byId.get();
+            reqUser = byId.get();
         }
 
         if(dto.getId() == null)
@@ -214,13 +281,13 @@ public class AdminController
             {
                 return new ResponseEntity<>("User does not exist", HttpStatus.BAD_REQUEST);
             }
-            user = byEmail.get();
+            reqUser = byEmail.get();
         }
 
         try
         {
-            resDto = new UserResponseDto(user);
-            resDto.setsAccount(user.getAccount());
+            resDto = new UserResponseDto(reqUser);
+            resDto.setsAccount(reqUser.getAccount());
         }
         catch (NullPointerException e)
         {
@@ -236,6 +303,15 @@ public class AdminController
     {
 //        The String side param should be a selection html tag of options USER,ACTIVE,INACTIVE
 //        on the frontend
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         List<String> sides = new ArrayList<>();
         sides.add(Side.ACTIVE.name());
         sides.add(Side.INACTIVE.name());
@@ -261,12 +337,30 @@ public class AdminController
     @PostMapping("accInfo")
     public ResponseEntity<?> getAccInfo(@Valid HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         return new ResponseEntity<>(bankServe.ActiveToInactiveInfo(), HttpStatus.OK);
     }
 
     @PostMapping("logAcc")
     public ResponseEntity<?> logAcc(@Valid @RequestBody LogAccDto dto, HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         AccountResponseDto resDto = new AccountResponseDto(bankServe.logAcc(dto));
 
         return new ResponseEntity<>(resDto, HttpStatus.OK);
@@ -275,6 +369,15 @@ public class AdminController
     @PostMapping("accHistory")
     public ResponseEntity<?> accHistory(@Valid @RequestParam Long id, HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         ResponseDto backupDto = new ResponseDto();
         List<ThriftResponseDto> resDtos = new ArrayList<>();
 
@@ -304,6 +407,15 @@ public class AdminController
     public ResponseEntity<?> allHouseAssing(@Valid HttpServletRequest request)
     {
 //        assigns account to thrifts with no account according to the availabilty of accounts
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         Map<String, List<Thrift>> all = bankServe.afterHours();
         if(all == null)
         {
@@ -352,6 +464,15 @@ public class AdminController
     public ResponseEntity<?> getUnasignedThrifts(@Valid @RequestParam int page,
                                                  HttpServletRequest request)
     {
+        String jwt = jwtObj.setJwt(request);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+
         List<ThriftResponseDto> dtos = new ArrayList<>();
 
         try

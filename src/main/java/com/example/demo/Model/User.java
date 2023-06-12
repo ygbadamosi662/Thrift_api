@@ -77,7 +77,6 @@ public class User extends Beneficiary implements UserDetails
         this.setsClassName();
     }
 
-
     public void setsClassName()
     {
         this.setClassName(User.class.getSimpleName());

@@ -8,6 +8,5 @@ import lombok.Setter;
 public class RemoveDto
 {
     String ticket;
-
     String memberEmail = "none";
 }

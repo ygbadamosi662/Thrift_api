@@ -5,9 +5,12 @@ import com.example.demo.Enums.Account_type;
 import com.example.demo.Enums.Consent;
 import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Side;
+import com.example.demo.JustClasses.Jwt;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
 import com.example.demo.JustClasses.ThriftAccountGenerator;
+import jakarta.persistence.NoResultException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -24,16 +27,14 @@ public class Utility
 
     private final ThriftsRepository thriftsRepository;
 
-    private final UserRepository userRepository;
-
-    private final AccountRepository accRepo;
-
-    private final TransactionRepository transRepo;
-
     private final Thrift_hubRepository hubRepo;
 
-    private final ThePotRepository potRepo;
+    private final JwtBlacklistRepository jwtBlacklistRepo;
 
+    public String giveJwt(HttpServletRequest req)
+    {
+        return req.getHeader("Authorization").substring("Bearer ".length());
+    }
 
     public List<User> get_members(Thrift thrift)
     {
@@ -47,6 +48,13 @@ public class Utility
         }
 
         return members;
+    }
+
+    public List<ThrifterHistory> get_membersInfo(Thrift thrift)
+    {
+        List<ThrifterHistory> byThrift = historyRepository.findByThrift(thrift);
+
+        return byThrift;
     }
 
     public boolean is_member(User user, Thrift thrift)
@@ -311,28 +319,14 @@ public class Utility
                     bigBoy.put("Completed", hold);
                 }
 
-                if(thrift.getOrganizer().equals(user))
+                if(bigBoy.get("Completed").containsKey("thrifts") != true)
                 {
-                    if(bigBoy.get("Completed").containsKey("organizer") != true)
-                    {
-                        List<ThriftResponseDto> dtos = new ArrayList<>();
-                        bigBoy.get("Completed").put("organizer", dtos);
-                    }
-                    ThriftResponseDto dto = new ThriftResponseDto(thrift);
-                    dto.setAllWeirdAssClasses(thrift);
-                    bigBoy.get("Completed").get("organizer").add(dto);
+                    List<ThriftResponseDto> dtos = new ArrayList<>();
+                    bigBoy.get("Completed").put("thrifts", dtos);
                 }
-                else
-                {
-                    if(bigBoy.get("Completed").containsKey("member") != true)
-                    {
-                        List<ThriftResponseDto> dtos = new ArrayList<>();
-                        bigBoy.get("Completed").put("member", dtos);
-                    }
-                    ThriftResponseDto dto = new ThriftResponseDto(thrift);
-                    dto.setAllWeirdAssClasses(thrift);
-                    bigBoy.get("Completed").get("member").add(dto);
-                }
+                ThriftResponseDto dto = new ThriftResponseDto(thrift);
+                dto.setAllWeirdAssClasses(thrift);
+                bigBoy.get("Completed").get("thrifts").add(dto);
             }
             else if(thrift.getCycle().name().equals("RUNNING"))
             {
@@ -341,28 +335,15 @@ public class Utility
                     bigBoy.put("Running", hold);
                 }
 
-                if(thrift.getOrganizer().equals(user))
+                if(bigBoy.get("Running").containsKey("thrifts") != true)
                 {
-                    if(bigBoy.get("Completed").containsKey("organizer") != true)
-                    {
-                        List<ThriftResponseDto> dtos = new ArrayList<>();
-                        bigBoy.get("Running").put("organizer", dtos);
-                    }
-                    ThriftResponseDto dto = new ThriftResponseDto(thrift);
-                    dto.setAllWeirdAssClasses(thrift);
-                    bigBoy.get("Running").get("organizer").add(dto);
+                    List<ThriftResponseDto> dtos = new ArrayList<>();
+                    bigBoy.get("Running").put("thrifts", dtos);
                 }
-                else
-                {
-                    if(bigBoy.get("Completed").containsKey("member") != true)
-                    {
-                        List<ThriftResponseDto> dtos = new ArrayList<>();
-                        bigBoy.get("Running").put("member", dtos);
-                    }
-                    ThriftResponseDto dto = new ThriftResponseDto(thrift);
-                    dto.setAllWeirdAssClasses(thrift);
-                    bigBoy.get("Running").get("member").add(dto);
-                }
+                ThriftResponseDto dto = new ThriftResponseDto(thrift);
+                dto.setAllWeirdAssClasses(thrift);
+                bigBoy.get("Running").get("thrifts").add(dto);
+
             }
             else if(thrift.getCycle().name().equals("AWAITING"))
             {
@@ -371,28 +352,16 @@ public class Utility
                     bigBoy.put("Awaiting", hold);
                 }
 
-                if(thrift.getOrganizer().equals(user))
+                if(bigBoy.get("Awaiting").containsKey("thrifts") != true)
                 {
-                    if(bigBoy.get("Awaiting").containsKey("organizer") != true)
-                    {
-                        List<ThriftResponseDto> dtos = new ArrayList<>();
-                        bigBoy.get("Awaiting").put("organizer", dtos);
-                    }
-                    ThriftResponseDto dto = new ThriftResponseDto(thrift);
-                    dto.setAllWeirdAssClasses(thrift);
-                    bigBoy.get("Awaiting").get("organizer").add(dto);
+                    List<ThriftResponseDto> dtos = new ArrayList<>();
+                    bigBoy.get("Awaiting").put("thrifts", dtos);
                 }
-                else
-                {
-                    if(bigBoy.get("Awaiting").containsKey("member") != true)
-                    {
-                        List<ThriftResponseDto> dtos = new ArrayList<>();
-                        bigBoy.get("Awaiting").put("member", dtos);
-                    }
-                    ThriftResponseDto dto = new ThriftResponseDto(thrift);
-                    dto.setAllWeirdAssClasses(thrift);
-                    bigBoy.get("Awaiting").get("member").add(dto);
-                }
+                ThriftResponseDto dto = new ThriftResponseDto(thrift);
+                dto.setAllWeirdAssClasses(thrift);
+                bigBoy.get("Awaiting").get("thrifts").add(dto);
+
+//
             }
         }
 

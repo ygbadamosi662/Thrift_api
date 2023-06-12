@@ -5,6 +5,7 @@ import com.example.demo.Enums.Consent;
 import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Role;
 import com.example.demo.Enums.TypeOf;
+import com.example.demo.JustClasses.Jwt;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
 import com.example.demo.Services.BankService;
@@ -43,8 +44,8 @@ public class ThriftController
 
     private final ThePotRepository potRepo;
 
-    @Autowired
-    private Utility util;
+//    @Autowired
+    private final Utility util;
 
     private final AuthenticationManager authenticationManager;
 
@@ -57,18 +58,23 @@ public class ThriftController
 
     private final BankService bankServe;
 
+    private final Jwt jwtObj;
+
 
     @PostMapping("/create")
     public ResponseEntity<?> createThrift(@Valid @RequestBody CreateThriftDto create,HttpServletRequest request)
     {
 
-        String authHeader = request.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(request);
 
-        System.out.println("jwt expires: " + jwtService.getExpiration(jwt));
+        if(jwtObj.is_cancelled(jwt))
+        {
+            System.out.println("im here");
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User organizer = jwtObj.giveUser();
 
-        Optional<User> chk_chk = userRepository.findByEmail(jwtService.getSubject(jwt));
-        User organizer = chk_chk.get();
         Map<String, Object> check = util.chk_user_limit(organizer);
         boolean good = (Boolean) check.get("good?");
         if(good == false)
@@ -123,10 +129,14 @@ public class ThriftController
     @PostMapping("/add")
     public ResponseEntity<?> addThrifter(@Valid @RequestBody AddThrifterDto add, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user =  userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(add.getTicket());
         if(byTicket.isEmpty())
@@ -204,9 +214,14 @@ public class ThriftController
     @PostMapping("/join")
     public ResponseEntity<?> joinThrift(@Valid @RequestBody JoinDto joint, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
-        User thrifter = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        String jwt = jwtObj.setJwt(req);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User thrifter = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(joint.getTicket());
         if(byTicket.isEmpty())
@@ -264,9 +279,14 @@ public class ThriftController
     @PostMapping("/accept")
     public ResponseEntity<?> acceptThrift(@Valid @RequestBody AcceptDto ticket, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        String jwt = jwtObj.setJwt(req);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         ThrifterHistory istory = new ThrifterHistory();
 
@@ -342,10 +362,14 @@ public class ThriftController
     @PostMapping("/set")
     public ResponseEntity<?> setNextCollector(@Valid @RequestBody CollectorDto set, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(set.getTicket());
         if(byTicket.isEmpty())
@@ -378,32 +402,51 @@ public class ThriftController
         }
     }
 
-    @PostMapping("userthrifts")
+    @PostMapping("/userthrifts")
     public ResponseEntity<?> getThrifts(@Valid @RequestBody AllThriftDto dto, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
 
-        if(dto.getEmail().equals("none"))
+        String jwt = jwtObj.setJwt(req);
+
+        if(jwtObj.is_cancelled(jwt))
         {
-            dto.setEmail(jwtService.getSubject(jwt));
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
         }
 
-        User user = userRepository.findByEmail(dto.getEmail()).get();
+        Map<String, Map<String, List<ThriftResponseDto>>> more_info = new HashMap<>();
+        User user = jwtObj.giveUser();
 
-        Map<String, Map<String, List<ThriftResponseDto>>> more_info =
-                util.get_thrifts(user, true);
+        if(user.getRole().equals(Role.ADMIN) && !(dto.getEmail().equals("none")))
+        {
+            Optional<User> byEmail = userRepository.findByEmail(dto.getEmail());
+            if(byEmail.isEmpty())
+            {
+                return new ResponseEntity<>("user does not exist",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            more_info = util.get_thrifts(byEmail.get(), true);
+
+            return new ResponseEntity<>(more_info, HttpStatus.OK);
+        }
+
+        more_info = util.get_thrifts(user, true);
 
         return new ResponseEntity<>(more_info, HttpStatus.OK);
     }
 
-    @PostMapping("members")
+    @PostMapping("/members")
     public ResponseEntity<?> getMembers(@Valid @RequestBody JoinDto dto, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
         if(byTicket.isEmpty())
@@ -411,22 +454,34 @@ public class ThriftController
             return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
         }
 
-        List<User> members = util.get_members(byTicket.get());
-        List<UserResponseDto> dtos = new ArrayList<>();
+        List<ThrifterHistory> members = util.get_membersInfo(byTicket.get());
+
+        if(members.isEmpty())
+        {
+            return new ResponseEntity<>("Thrift member is unusually empty", HttpStatus.BAD_REQUEST);
+        }
+
+        List<MemberResponseDto> dtos = new ArrayList<>();
         members.forEach((member)-> {
-            dtos.add(new UserResponseDto(member));
+            MemberResponseDto memberDto = new MemberResponseDto(member);
+            memberDto.setMember(member);
+            dtos.add(memberDto);
         });
 
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
 
-    @PostMapping("remove")
+    @PostMapping("/remove")
     public ResponseEntity<?> removeMember(@Valid @RequestBody RemoveDto dto, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
         if(byTicket.isEmpty())
@@ -480,13 +535,17 @@ public class ThriftController
                     HttpStatus.BAD_REQUEST);
     }
 
-    @PostMapping("slot")
+    @PostMapping("/slot")
     public ResponseEntity<?> manageSlot(@Valid @RequestBody AddThrifterDto dto, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
         if(byTicket.isEmpty())
@@ -584,15 +643,19 @@ public class ThriftController
 
     }
 
-    @PostMapping("pay")
+    @PostMapping("/pay")
     public ResponseEntity<?> payThrift(@Valid @RequestBody PayDto dto, HttpServletRequest req)
     {
 //        this a very very basic pay endpoint,resources not available to write a more sophisticated
 //        and standard pay endpoint,will have to make do with this for now
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
         if(byTicket.isEmpty())
@@ -654,13 +717,17 @@ public class ThriftController
         }
     }
 
-    @PostMapping("collect")
+    @PostMapping("/collect")
     public ResponseEntity<?> collectThrift(@Valid @RequestBody CollectDto dto, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
         if(byTicket.isEmpty())
@@ -770,13 +837,17 @@ public class ThriftController
         }
     }
 
-    @PostMapping("payHistory")
+    @GetMapping("/payHistory")
     public ResponseEntity<?> payHistory(@Valid @RequestParam String ticket, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
         if(byTicket.isEmpty())
@@ -815,13 +886,17 @@ public class ThriftController
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
 
-    @PostMapping("potHistory")
+    @GetMapping("/potHistory")
     public ResponseEntity<?> potHistory(@Valid @RequestParam String ticket, HttpServletRequest req)
     {
-        String authHeader = req.getHeader("Authorization");
-        String jwt = authHeader.substring("Bearer ".length());
+        String jwt = jwtObj.setJwt(req);
 
-        User user = userRepository.findByEmail(jwtService.getSubject(jwt)).get();
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
         if(byTicket.isEmpty())
