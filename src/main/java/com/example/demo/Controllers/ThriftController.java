@@ -924,4 +924,62 @@ public class ThriftController
 
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> search(@Valid @RequestParam String ticket, HttpServletRequest req)
+    {
+        String jwt = jwtObj.setJwt(req);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+
+        List<Thrift> result = thriftsRepository.findByPattern(ticket);
+
+        if(result.isEmpty())
+        {
+            return new ResponseEntity<>("Nothing found", HttpStatus.BAD_REQUEST);
+        }
+
+        List<Map> response = new ArrayList<>();
+
+        result.forEach((thri) ->{
+            Map<String, String> res = new HashMap<>();
+            res.put("name", thri.getThriftName());
+            res.put("ticket", thri.getTicket());
+            res.put("org_name", thri.getOrganizer().getFname() +" "+ thri.getOrganizer().getLname());
+            res.put("org_email", thri.getOrganizer().getEmail());
+            response.add(res);
+        });
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/getThrift")
+    public ResponseEntity<?> getThrift(@Valid @RequestParam String ticket, HttpServletRequest req)
+    {
+        String jwt = jwtObj.setJwt(req);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
+
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("No thrift found",
+                    HttpStatus.BAD_REQUEST);
+        }
+        Thrift thrift = byTicket.get();
+        ThriftResponseDto dto = new ThriftResponseDto(thrift);
+        dto.setAllWeirdAssClasses(thrift);
+
+        return ResponseEntity.ok(dto);
+    }
 }
