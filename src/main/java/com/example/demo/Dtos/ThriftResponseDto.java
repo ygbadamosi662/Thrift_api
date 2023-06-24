@@ -2,15 +2,12 @@ package com.example.demo.Dtos;
 
 import com.example.demo.Enums.Lifecycle;
 import com.example.demo.Enums.Term;
-import com.example.demo.Model.Account;
 import com.example.demo.Model.Thrift;
-import com.example.demo.Model.User;
+import com.example.demo.Utilities.Utility;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 @Getter
 public class ThriftResponseDto extends ResponseDto
@@ -49,8 +46,8 @@ public class ThriftResponseDto extends ResponseDto
 
     private long collection_available;
 
+    private String how_full_in_perecentage;
 
-    public ThriftResponseDto(){}
 
     public ThriftResponseDto(Thrift thrift)
     {
@@ -90,8 +87,7 @@ public class ThriftResponseDto extends ResponseDto
     {
         if(thrift.getAccount() != null)
         {
-            AccountResponseDto dto= new AccountResponseDto(thrift.getAccount());
-            this.account = dto;
+            this.account = new AccountResponseDto(thrift.getAccount());
         }
     }
 
@@ -108,12 +104,19 @@ public class ThriftResponseDto extends ResponseDto
         }
     }
 
+    public void setHow_full_in_perecentage(Thrift thrift)
+    {
+        Utility util = new Utility();
+        this.how_full_in_perecentage = String.format("%.2f", util.capacityInPercntage(thrift));
+    }
+
     public void setAllWeirdAssClasses(Thrift thrift)
     {
         this.setAccount(thrift);
         this.setOrganizer(thrift);
         this.setCollector(thrift);
         this.setThrift_dates(thrift);
+        this.setHow_full_in_perecentage(thrift);
     }
 
 }

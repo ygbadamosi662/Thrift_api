@@ -36,9 +36,6 @@ public class CreateThriftDto
 
     private Lifecycle cycle = Lifecycle.AWAITING;
 
-
-
-
     public Thrift getThrift ()
     {
         Thrift thrift = new Thrift();

@@ -10,14 +10,15 @@ import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
 import com.example.demo.Services.BankService;
 import com.example.demo.Services.JwtService;
-import com.example.demo.Services.SomeService;
 import com.example.demo.Utilities.Utility;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -436,25 +437,27 @@ public class ThriftController
         return new ResponseEntity<>(more_info, HttpStatus.OK);
     }
 
-    @PostMapping("/members")
-    public ResponseEntity<?> getMembers(@Valid @RequestBody JoinDto dto, HttpServletRequest req)
+    @GetMapping("/members")
+    public ResponseEntity<?> getMembers(@Valid @RequestParam String ticket,
+                                        @RequestParam int page,
+                                        HttpServletRequest req)
     {
         String jwt = jwtObj.setJwt(req);
+        System.out.println("we here");
 
         if(jwtObj.is_cancelled(jwt))
         {
             return new ResponseEntity<>("jwt blacklisted,user should login again",
                     HttpStatus.BAD_REQUEST);
         }
-        User user = jwtObj.giveUser();
 
-        Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
         if(byTicket.isEmpty())
         {
             return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
         }
 
-        List<ThrifterHistory> members = util.get_membersInfo(byTicket.get());
+        Slice<ThrifterHistory> members = util.get_membersInfo(byTicket.get(), page);
 
         if(members.isEmpty())
         {
@@ -464,11 +467,15 @@ public class ThriftController
         List<MemberResponseDto> dtos = new ArrayList<>();
         members.forEach((member)-> {
             MemberResponseDto memberDto = new MemberResponseDto(member);
-            memberDto.setMember(member);
             dtos.add(memberDto);
         });
 
-        return new ResponseEntity<>(dtos, HttpStatus.OK);
+        MembersPageResponseDto pageDto = new MembersPageResponseDto(members.hasNext(),
+                members.hasPrevious(),
+                members.getPageable().getPageSize(),
+                dtos);
+
+        return new ResponseEntity<>(pageDto, HttpStatus.OK);
     }
 
     @PostMapping("/remove")
@@ -838,7 +845,9 @@ public class ThriftController
     }
 
     @GetMapping("/payHistory")
-    public ResponseEntity<?> payHistory(@Valid @RequestParam String ticket, HttpServletRequest req)
+    public ResponseEntity<?> payHistory(@Valid @RequestParam String ticket, @RequestParam int page,
+                                        @RequestParam Long index,
+                                        HttpServletRequest req)
     {
         String jwt = jwtObj.setJwt(req);
 
@@ -856,38 +865,48 @@ public class ThriftController
         }
         Thrift thrift = byTicket.get();
 
+        int pageSize = 10;
+        Pageable pages = PageRequest.of(page, pageSize);
+
         if(!thrift.getOrganizer().equals(user))
         {
             if(util.is_member(user, thrift))
             {
-                List<Thrift_hub> hubs = hubRepo.findByThriftAndUser(thrift, user);
+                Slice<Thrift_hub> hubSlice = hubRepo.findByThriftAndUser(thrift, user, pages);
                 List<Thrift_hubResponseDto> dtos = new ArrayList<>();
-                hubs.forEach((hub)-> {
+                hubSlice.forEach((hub)-> {
                     Thrift_hubResponseDto dto = new Thrift_hubResponseDto();
                     dto.setAll(hub);
                     dtos.add(dto);
                 });
-
-                return new ResponseEntity<>(dtos, HttpStatus.OK);
+                HubPageDto hubPageDto = new HubPageDto(hubSlice.hasNext(), pageSize, dtos);
+                return new ResponseEntity<>(hubPageDto, HttpStatus.OK);
             }
 
             return new ResponseEntity<>("You are not a member of the provided thrift",
                     HttpStatus.BAD_REQUEST);
         }
 
-        List<Thrift_hub> hubs = hubRepo.findByThrift(thrift);
+        Slice<Thrift_hub> hubSlice = util.thriftIndexed(thrift, index, page);
         List<Thrift_hubResponseDto> dtos = new ArrayList<>();
-        hubs.forEach((hub)-> {
-            Thrift_hubResponseDto dto = new Thrift_hubResponseDto();
-            dto.setAll(hub);
-            dtos.add(dto);
-        });
 
-        return new ResponseEntity<>(dtos, HttpStatus.OK);
+        if(hubSlice.hasContent())
+        {
+            hubSlice.forEach((hub)-> {
+                Thrift_hubResponseDto dto = new Thrift_hubResponseDto();
+                dto.setAll(hub);
+                dtos.add(dto);
+            });
+        }
+        HubPageDto hubPageDto = new HubPageDto(hubSlice.hasNext(), pageSize, dtos);
+
+        return new ResponseEntity<>(hubPageDto, HttpStatus.OK);
     }
 
     @GetMapping("/potHistory")
-    public ResponseEntity<?> potHistory(@Valid @RequestParam String ticket, HttpServletRequest req)
+    public ResponseEntity<?> potHistory(@Valid @RequestParam String ticket,
+                                        @RequestParam int page,
+                                        HttpServletRequest req )
     {
         String jwt = jwtObj.setJwt(req);
 
@@ -905,24 +924,30 @@ public class ThriftController
         }
         Thrift thrift = byTicket.get();
 
-        List<ThePot> pots = potRepo.findByThrift(thrift);
-        if(!thrift.getOrganizer().equals(user))
+        int pageSize = 10;
+        Pageable pages = PageRequest.of(page, pageSize);
+
+        Slice<ThePot> slice = potRepo.findByThrift(thrift, pages);
+
+        if(!util.is_member(user, thrift))
         {
-            if(util.is_member(user, thrift))
-            {
-                return new ResponseEntity<>(pots.size(), HttpStatus.OK);
-            }
             return new ResponseEntity<>("Not a member of this thrift", HttpStatus.BAD_REQUEST);
         }
 
-        List<ThePotResponseDto> dtos = new ArrayList<>();
-        pots.forEach((pot)-> {
-            ThePotResponseDto dto = new ThePotResponseDto(pot);
-            dto.setAll(pot);
-            dtos.add(dto);
-        });
+        List<ThePotResponseDto> resDto = new ArrayList<>();
 
-        return new ResponseEntity<>(dtos, HttpStatus.OK);
+        if(slice.hasContent())
+        {
+            slice.forEach((pot)-> {
+                ThePotResponseDto dto = new ThePotResponseDto(pot);
+                dto.setAll(pot);
+                resDto.add(dto);
+            });
+        }
+
+        PotPageDto potPageDto = new PotPageDto(slice.hasNext(), pageSize, resDto);
+
+        return new ResponseEntity<>(potPageDto, HttpStatus.OK);
     }
 
     @GetMapping("/search")
@@ -936,21 +961,24 @@ public class ThriftController
                     HttpStatus.BAD_REQUEST);
         }
 
+        if(ticket == null)
+        {
+            return new ResponseEntity<>("ticket is null",
+                    HttpStatus.BAD_REQUEST);
+        }
 
         List<Thrift> result = thriftsRepository.findByPattern(ticket);
 
         if(result.isEmpty())
         {
-            return new ResponseEntity<>("Nothing found", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Nothing found", HttpStatus.OK);
         }
 
         List<Map> response = new ArrayList<>();
 
         result.forEach((thri) ->{
             Map<String, String> res = new HashMap<>();
-            res.put("name", thri.getThriftName());
             res.put("ticket", thri.getTicket());
-            res.put("org_name", thri.getOrganizer().getFname() +" "+ thri.getOrganizer().getLname());
             res.put("org_email", thri.getOrganizer().getEmail());
             response.add(res);
         });
@@ -968,7 +996,7 @@ public class ThriftController
             return new ResponseEntity<>("jwt blacklisted,user should login again",
                     HttpStatus.BAD_REQUEST);
         }
-
+        User user = jwtObj.giveUser();
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
 
         if(byTicket.isEmpty())
@@ -976,10 +1004,45 @@ public class ThriftController
             return new ResponseEntity<>("No thrift found",
                     HttpStatus.BAD_REQUEST);
         }
+
         Thrift thrift = byTicket.get();
-        ThriftResponseDto dto = new ThriftResponseDto(thrift);
+
+        if(util.is_member(user, thrift))
+        {
+            ThriftResponseDto dto = new ThriftResponseDto(thrift);
+            dto.setAllWeirdAssClasses(thrift);
+
+            return ResponseEntity.ok(dto);
+        }
+
+        NoneMemberThriftResponseDto dto = new NoneMemberThriftResponseDto(thrift);
         dto.setAllWeirdAssClasses(thrift);
 
         return ResponseEntity.ok(dto);
+    }
+
+    @GetMapping("/ifMember")
+    public ResponseEntity<?> ifMember(@Valid @RequestParam String ticket, HttpServletRequest req)
+    {
+        String jwt = jwtObj.setJwt(req);
+
+        if(jwtObj.is_cancelled(jwt))
+        {
+            return new ResponseEntity<>("jwt blacklisted,user should login again",
+                    HttpStatus.BAD_REQUEST);
+        }
+        User user = jwtObj.giveUser();
+        Optional<Thrift> byTicket = thriftsRepository.findByTicket(ticket);
+
+        if(byTicket.isEmpty())
+        {
+            return new ResponseEntity<>("No thrift found",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Map<String, Boolean> isMember = new HashMap<>();
+        isMember.put("isMember", util.is_member(user, byTicket.get()));
+
+        return new ResponseEntity<>(isMember, HttpStatus.OK);
     }
 }

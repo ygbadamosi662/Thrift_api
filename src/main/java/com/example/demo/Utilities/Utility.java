@@ -1,19 +1,16 @@
 package com.example.demo.Utilities;
 
 import com.example.demo.Dtos.ThriftResponseDto;
-import com.example.demo.Enums.Account_type;
 import com.example.demo.Enums.Consent;
 import com.example.demo.Enums.Lifecycle;
-import com.example.demo.Enums.Side;
-import com.example.demo.JustClasses.Jwt;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
-import com.example.demo.JustClasses.ThriftAccountGenerator;
-import jakarta.persistence.NoResultException;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
-
 import java.time.LocalDate;
 import java.util.*;
 
@@ -23,18 +20,18 @@ public class Utility
 {
     private int multi;
 
-    private final ThrifterHistoryRepository historyRepository;
+    private int longest = 52;
 
-    private final ThriftsRepository thriftsRepository;
+    @Autowired
+    private ThrifterHistoryRepository historyRepository;
 
-    private final Thrift_hubRepository hubRepo;
+    @Autowired
+    private ThriftsRepository thriftsRepository;
 
-    private final JwtBlacklistRepository jwtBlacklistRepo;
+    @Autowired
+    private Thrift_hubRepository hubRepo;
 
-    public String giveJwt(HttpServletRequest req)
-    {
-        return req.getHeader("Authorization").substring("Bearer ".length());
-    }
+//    private final JwtBlacklistRepository jwtBlacklistRepo;
 
     public List<User> get_members(Thrift thrift)
     {
@@ -50,12 +47,17 @@ public class Utility
         return members;
     }
 
-    public List<ThrifterHistory> get_membersInfo(Thrift thrift)
+    public Slice get_membersInfo(Thrift thrift, int page)
     {
-        List<ThrifterHistory> byThrift = historyRepository.findByThrift(thrift);
+        int pageSize = 10;
+        Pageable pages = PageRequest.of(page, pageSize);
 
-        return byThrift;
+        Slice<ThrifterHistory> slice = historyRepository.findByThrift(thrift, pages);
+
+        return slice;
     }
+
+
 
     public boolean is_member(User user, Thrift thrift)
     {
@@ -79,8 +81,8 @@ public class Utility
         if(this.duration_chk(thrift) == false)
         {
             System.out.println(this.duration_chk(thrift));
-            Thrift thrick = new Thrift();
-            return thrick;
+//            Thrift thrick = new Thrift();
+            return null;
         }
 
         thrift.setCollection_amount(this.collectionCalc(thrift));
@@ -131,8 +133,15 @@ public class Utility
 //        the longest a thrift should last is 52 weeks
 //        this method makes sure thats adhered to
 //        returns true if thrift duration is ok and false otherwise
-        int longest = 52;
 
+        return longest >= duration(thrift);
+    }
+
+    public int duration(Thrift thrift)
+    {
+//        the longest a thrift should last is 52 weeks
+//        this method makes sure thats adhered to
+//        returns true if thrift duration is ok and false otherwise
 
         Map <String,Integer> terms = new HashMap<>();
         terms.put("WEEKLY",1);
@@ -146,8 +155,15 @@ public class Utility
             }
         });
 
-        System.out.println("slots: "+thrift.getSlots()+"multi: "+multi);
-        return longest >= (multi * thrift.getSlots());
+        return multi * thrift.getSlots();
+    }
+
+    public double capacityInPercntage(Thrift thrift)
+    {
+        Long of = (long) duration(thrift);
+        Long in = (long) longest;
+
+        return percentage(of, in);
     }
 
     public long collectionCalc(Thrift thrift)
@@ -404,11 +420,14 @@ public class Utility
 
     public double percentage(Long of, Long in)
     {
-        Long percent = null;
+        double percent = 0;
 
         try
         {
-             percent = (of/in) * 100;
+            double off = (double) of;
+            double inn = (double) in;
+
+            percent = (off/inn) * 100;
         }
         catch (ArithmeticException e)
         {
@@ -416,6 +435,14 @@ public class Utility
         }
 
         return percent;
+    }
+
+    public Slice<Thrift_hub> thriftIndexed(Thrift thrift, Long index, int page)
+    {
+        int pageSize = 10;
+        Pageable pages = PageRequest.of(page, pageSize);
+
+        return hubRepo.findByThriftAndThriftIndex(thrift, index, pages);
     }
 
     public List<Thrift> get_completed(User user)

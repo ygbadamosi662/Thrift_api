@@ -68,7 +68,7 @@ public class AdminController
     private Jwt jwtObj;
 
 
-    @PostMapping("/users")
+    @GetMapping("/users")
     public ResponseEntity<?> getAllUsers(@Valid @RequestParam int page,@RequestParam String role,
                                          HttpServletRequest request)
     {
