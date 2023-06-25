@@ -4,5 +4,6 @@ public enum Lifecycle
 {
     AWAITING,
     RUNNING,
-    COMPLETED
+    COMPLETED,
+    DELETED
 }

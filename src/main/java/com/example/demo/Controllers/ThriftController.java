@@ -70,7 +70,6 @@ public class ThriftController
 
         if(jwtObj.is_cancelled(jwt))
         {
-            System.out.println("im here");
             return new ResponseEntity<>("jwt blacklisted,user should login again",
                     HttpStatus.BAD_REQUEST);
         }
@@ -168,6 +167,12 @@ public class ThriftController
 
             User thrifter = byEmail.get();
 
+            //        checking if user is already part of thrift
+            if(util.is_member(thrifter, thrift))
+            {
+                return new ResponseEntity<>("User already a member", HttpStatus.BAD_REQUEST);
+            }
+
 //        checking if thrifter has reached participation limit
             Map<String, Object> check = util.chk_user_limit(thrifter);
             boolean good = (Boolean) check.get("good?");
@@ -179,19 +184,6 @@ public class ThriftController
             }
 
 
-//        checking if user is already part of thrift
-            if(util.is_member(thrifter, thrift))
-            {
-                return new ResponseEntity<>("User already a member", HttpStatus.BAD_REQUEST);
-            }
-//            updates the thrift slots and collection_amnt property
-//            and also checks if the thrift duration is not over a year
-            if(util.slotsAssistantManager(util.slotsManager(thrift, add.getSlot())) == false)
-            {
-                return new ResponseEntity<>(
-                        "Every Thrift must end within a yaer,too much members or too short term",
-                        HttpStatus.BAD_REQUEST);
-            }
             ThrifterHistory history = new ThrifterHistory();
             history.setThrift(thrift);
             history.setUser(thrifter);
@@ -239,6 +231,12 @@ public class ThriftController
                     HttpStatus.BAD_REQUEST);
         }
 
+//        checks if user is already a member
+        if(util.is_member(thrifter, thrift))
+        {
+            return new ResponseEntity<>("User already a member", HttpStatus.BAD_REQUEST);
+        }
+
         //        checking if thrifter has reached participation limit
         Map<String, Object> check = util.chk_user_limit(thrifter);
         boolean good = (Boolean) check.get("good?");
@@ -249,19 +247,6 @@ public class ThriftController
             return new ResponseEntity<>("User at limit", HttpStatus.BAD_REQUEST);
         }
 
-        if(util.is_member(thrifter, thrift))
-        {
-            return new ResponseEntity<>("User already a member", HttpStatus.BAD_REQUEST);
-        }
-
-        //            updates the thrift slots and collection_amnt property
-//            and also checks if the thrift duration is not over a year
-        if(util.slotsAssistantManager(util.slotsManager(thrift, joint.getSlot())) == false)
-        {
-            return new ResponseEntity<>(
-                    "Every Thrift must end within a yaer,too much members or too short term",
-                    HttpStatus.BAD_REQUEST);
-        }
 
         ThrifterHistory history = new ThrifterHistory();
         history.setThrift(thrift);
@@ -323,15 +308,28 @@ public class ThriftController
             Optional<ThrifterHistory> byTwo = historyRepository.findByThriftAndUser(thrift, member);
             if(byTwo.isEmpty())
             {
-                return new ResponseEntity<>("user have retracted their interest", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("user has not sent a request", HttpStatus.BAD_REQUEST);
             }
 
             Consent con = Consent.GREEN;
             istory = byTwo.get();
-            if(istory.getConsent().name().equals("TYELLOW"))
+            if(istory.getConsent().name().equals("OYELLOW"))
             {
                 istory.setConsent(con);
-                istory = historyRepository.save(istory);
+
+                //            updates the thrift slots and collection_amnt property
+//            and also checks if the thrift duration is not over a year
+                if(util.slotsAssistantManager(util.slotsManager(thrift, istory.getSlot())) == false)
+                {
+                    return new ResponseEntity<>(
+                            "Every Thrift must end within a yaer,too much members or too short term",
+                            HttpStatus.BAD_REQUEST);
+                }
+                else
+                {
+                    istory = historyRepository.save(istory);
+                }
+
             }
 
 
@@ -347,10 +345,22 @@ public class ThriftController
 
             Consent con = Consent.GREEN;
             istory = byTwo.get();
-            if(istory.getConsent().name().equals("OYELLOW"))
+            if(istory.getConsent().name().equals("TYELLOW"))
             {
                 istory.setConsent(con);
-                istory = historyRepository.save(istory);
+
+                //            updates the thrift slots and collection_amnt property
+//            and also checks if the thrift duration is not over a year
+                if(util.slotsAssistantManager(util.slotsManager(thrift, istory.getSlot())) == false)
+                {
+                    return new ResponseEntity<>(
+                            "Every Thrift must end within a yaer,too much members or too short term",
+                            HttpStatus.BAD_REQUEST);
+                }
+                else
+                {
+                    istory = historyRepository.save(istory);
+                }
             }
         }
 
@@ -496,8 +506,8 @@ public class ThriftController
             return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
         }
 
-        LocalDate now = LocalDate.now();
-        if(byTicket.get().getThrift_start().isBefore(now))
+
+        if(util.hasStarted(byTicket.get()))
         {
             return new ResponseEntity<>("too late,thrift already started",
                     HttpStatus.BAD_REQUEST);
@@ -531,7 +541,7 @@ public class ThriftController
             {
                 ThrifterHistory istory = util.removeMember(byTicket.get(), byEmail.get());
 
-                return new ResponseEntity<>("Member deleted succesfully", HttpStatus.OK);
+                return new ResponseEntity<>("Member removed succesfully", HttpStatus.OK);
             }
 
             return new ResponseEntity<>("You are not a member of the thrift.",

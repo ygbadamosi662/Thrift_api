@@ -33,18 +33,36 @@ public class Utility
 
 //    private final JwtBlacklistRepository jwtBlacklistRepo;
 
-    public List<User> get_members(Thrift thrift)
+    public List<User> get_members(Thrift thrift, boolean all)
     {
 //        returns a list of every thrifter that are participating in thrift
+//        depends on all, if true ignores the consent if false considers the consent
         List<User> members = new ArrayList<>();
-        List<ThrifterHistory> byThrift = historyRepository.findByThrift(thrift);
 
-        for (int i = 0; i < byThrift.size(); i++)
+        if(all)
         {
-            members.add(byThrift.get(i).getUser());
+            List<ThrifterHistory> byThrift = historyRepository.findByThrift(thrift);
+            for (int i = 0; i < byThrift.size(); i++)
+            {
+                members.add(byThrift.get(i).getUser());
+            }
+        }
+        else
+        {
+            List<ThrifterHistory> byThriftAndConsent = historyRepository.findByThriftAndConsent(thrift,
+                    Consent.GREEN);
+            for (int i = 0; i < byThriftAndConsent.size(); i++)
+            {
+                members.add(byThriftAndConsent.get(i).getUser());
+            }
         }
 
         return members;
+    }
+
+    public List<User> get_members(Thrift thrift)
+    {
+        return this.get_members(thrift, false);
     }
 
     public Slice get_membersInfo(Thrift thrift, int page)
@@ -52,17 +70,40 @@ public class Utility
         int pageSize = 10;
         Pageable pages = PageRequest.of(page, pageSize);
 
-        Slice<ThrifterHistory> slice = historyRepository.findByThrift(thrift, pages);
+        Slice<ThrifterHistory> slice = historyRepository.findByThriftAndConsent(thrift, Consent.GREEN, pages);
 
         return slice;
     }
 
-
-
-    public boolean is_member(User user, Thrift thrift)
+    public List<Thrift> removesDeleted(List<Thrift> thrifts)
     {
-        List<User> members = this.get_members(thrift);
+        if(thrifts.isEmpty() == false)
+        {
+            thrifts.forEach( thrift -> {
+                if(thrift.getCycle().equals(Lifecycle.DELETED))
+                {
+                    thrifts.remove(thrift);
+                }
+            });
+        }
+        return thrifts;
+    }
+
+
+    public boolean is_member(User user, Thrift thrift, boolean all)
+    {
+        List<User> members = new ArrayList<>();
         boolean present = false;
+
+        if(all)
+        {
+            members = this.get_members(thrift, true);
+        }
+        else
+        {
+            members = this.get_members(thrift);
+        }
+
         for (User member: members)
         {
             if(member.equals(user))
@@ -72,6 +113,11 @@ public class Utility
         }
 
         return present;
+    }
+
+    public boolean is_member(User user, Thrift thrift)
+    {
+        return this.is_member(user, thrift, false);
     }
 
     public Thrift slotsManager(Thrift thrift, int slot)
@@ -255,7 +301,7 @@ public class Utility
 
         Map<String, ? extends Object> hold = new HashMap<>();
         List<Thrift> all_thrift = new ArrayList<>();
-        List<ThrifterHistory> th = historyRepository.findByUser(user);
+        List<ThrifterHistory> th = historyRepository.findByUserAndConsent(user, Consent.GREEN);
         for (ThrifterHistory each : th)
         {
             Thrift thrift = each.getThrift();
@@ -314,8 +360,9 @@ public class Utility
             }
         }
 
-        return thriftList;
+        return this.removesDeleted(thriftList);
     }
+
 
     public  Map<String, Map <String, List<ThriftResponseDto> > >
     get_thrifts(User user, boolean more_info)
@@ -384,38 +431,116 @@ public class Utility
         return bigBoy;
     }
 
+    public List<ThrifterHistory> getHistory(User user)
+    {
+        return historyRepository.findByUser(user);
+    }
+
     public ThrifterHistory removeMember(Thrift thrift, User member)
     {
-//        this function removes member from thrift
-//        if the member is the thrift organixer it deletes the thrift and clears all history of...
-//        the thrift from ThrifterHistoryRepository
-        if(thrift.getOrganizer().equals(member))
-        {
-            ThrifterHistory org = historyRepository.findByThriftAndUser(thrift, member).get();
-            List<ThrifterHistory> all = historyRepository.findByThrift(thrift);
-            all.forEach((istory)->{
-                istory.setUser(new User());
-                istory.setThrift(new Thrift());
-
-                historyRepository.deleteById(historyRepository.save(istory).getId());
-            });
-            thrift.setOrganizer(new User());
-            thriftsRepository.delete(thriftsRepository.save(thrift));
-            return org;
-        }
-        Optional<ThrifterHistory> byThriftAndUser = historyRepository.
-                findByThriftAndUser(thrift, member);
+        Optional<ThrifterHistory> byThriftAndUser = historyRepository.findByThriftAndUser(thrift, member);
         if(byThriftAndUser.isEmpty())
         {
-            System.out.println("user is not a member or thrift dont exist");
+            System.out.println("user is not a member");
+            return null;
         }
-        ThrifterHistory istory = byThriftAndUser.get();
-        historyRepository.deleteById(byThriftAndUser.get().getId());
-        this.minus_slot(thrift, istory.getSlot());
+
+        ThrifterHistory isto = byThriftAndUser.get();
+        Consent con = isto.getConsent();
+
+        if(thrift.getOrganizer().equals(member))
+        {
+
+            List<ThrifterHistory> all = historyRepository.findByThrift(thrift);
+
+            if(all.size() == 1)
+            {
+                ThrifterHistory histo = all.get(1);
+                histo.setConsent(Consent.ORED);
+                historyRepository.save(histo);
+
+                thrift.setCycle(Lifecycle.DELETED);
+                return isto;
+            }
+
+            if(all.size() > 1 && this.hasStarted(thrift) == false)
+            {
+                for (ThrifterHistory histo: all)
+                {
+                    histo.setConsent(Consent.ORED);
+                    historyRepository.save(histo);
+                }
+
+                thrift.setCycle(Lifecycle.DELETED);
+                return isto;
+            }
+
+            return null;
+        }
+
+        if(this.hasStarted(thrift))
+        {
+            return null;
+        }
+
+//        if rejected by thrifter
+        if(con == Consent.TYELLOW)
+        {
+            isto.setConsent(Consent.TRED);
+        }
+
+//        if rejected by organizer
+        if(con == Consent.OYELLOW)
+        {
+            isto.setConsent(Consent.ORED);
+        }
+
+        this.minus_slot(thrift, isto.getSlot());
         thrift.setCollection_amount(this.collectionCalc(thrift));
         thriftsRepository.save(thrift);
 
-        return istory;
+        return historyRepository.save(isto);
+    }
+
+    public boolean hasStarted(Thrift thrift)
+    {
+        LocalDate now = LocalDate.now();
+        if(thrift.getThrift_start().equals(now) || thrift.getThrift_start().isBefore(now))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public void runThrift(Thrift thrift)
+    {
+        if(this.hasStarted(thrift) && thrift.getCycle().equals(Lifecycle.AWAITING))
+        {
+            thrift.setCycle(Lifecycle.RUNNING);
+            thriftsRepository.save(thrift);
+        }
+    }
+
+    public void thriftSweeper(User user)
+    {
+        List<ThrifterHistory> notGreens = historyRepository.findByUserAndConsents(user, Consent.OYELLOW,
+                Consent.TYELLOW);
+        List<ThrifterHistory> deletedThrifts = historyRepository.findByUserAndThriftCycleAndConsents(user,
+                Lifecycle.DELETED, Consent.OYELLOW, Consent.TYELLOW);
+
+        notGreens.forEach((notGreen) -> {
+            if(hasStarted(notGreen.getThrift()))
+            {
+                notGreen.setConsent(Consent.GODRED);
+                historyRepository.save(notGreen);
+            }
+        });
+
+        deletedThrifts.forEach((deletedThrift) -> {
+            deletedThrift.setConsent(Consent.GODRED);
+            historyRepository.save(deletedThrift);
+        });
     }
 
     public double percentage(Long of, Long in)
@@ -468,7 +593,7 @@ public class Utility
         {
             if(isto.getThrift().getOrganizer().equals(user))
             {
-                List<User> members = this.get_members(isto.getThrift());
+                List<User> members = this.get_members(isto.getThrift(), true);
                 Consent con = Consent.TYELLOW;
                 for (User member: members)
                 {

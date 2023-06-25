@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-public class ThrifterHistory extends ResponseDto
+public class ThrifterHistory
 {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -36,9 +36,7 @@ public class ThrifterHistory extends ResponseDto
     @UpdateTimestamp
     private LocalDateTime updated_on;
 
-
-
     @Enumerated(EnumType.STRING)
-    private Consent consent = Consent.YELLOW;
+    private Consent consent;
 
 }
