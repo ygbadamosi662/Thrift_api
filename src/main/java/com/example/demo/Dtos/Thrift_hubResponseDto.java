@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -53,17 +54,17 @@ public class Thrift_hubResponseDto extends ResponseDto
         }
     }
 
-    public void setDate(LocalDate date)
+    public void setDate(LocalDateTime date)
     {
         if(date != null)
         {
-            this.date = this.getStringDate(date);
+            this.date = this.getStringDateTime(date);
         }
     }
 
     public void setAll(Thrift_hub hub)
     {
-        this.setDate(hub.getDate());
+        this.setDate(hub.getCreated_on());
         this.setThrift(hub.getThrift());
         this.setUser(hub.getUser());
     }

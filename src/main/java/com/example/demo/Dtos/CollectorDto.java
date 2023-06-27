@@ -8,4 +8,6 @@ public class CollectorDto
     private String ticket;
 
     private String email;
+
+    private long index;
 }

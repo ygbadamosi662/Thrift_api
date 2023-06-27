@@ -1,10 +1,7 @@
 package com.example.demo.Controllers;
 
 import com.example.demo.Dtos.*;
-import com.example.demo.Enums.Consent;
-import com.example.demo.Enums.Lifecycle;
-import com.example.demo.Enums.Role;
-import com.example.demo.Enums.TypeOf;
+import com.example.demo.Enums.*;
 import com.example.demo.JustClasses.Jwt;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
@@ -145,6 +142,12 @@ public class ThriftController
         }
         Thrift thrift = byTicket.get();
 
+        if(!user.equals(thrift.getOrganizer()))
+        {
+            return new ResponseEntity<>("Only the thrift organizer can add other members",
+                    HttpStatus.BAD_REQUEST);
+        }
+
         LocalDate now = LocalDate.now();
         if(thrift.getThrift_start().isBefore(now))
         {
@@ -152,56 +155,50 @@ public class ThriftController
                     HttpStatus.BAD_REQUEST);
         }
 
-        if(user.equals(thrift.getOrganizer()))
+
+        List<Long> longList = new ArrayList<>();
+
+
+        Optional<User> byEmail = userRepository.findByEmail(add.getEmail());
+
+        if(byEmail.isEmpty())
         {
+            return new ResponseEntity<>("User must be registred to partake in thrift", HttpStatus.BAD_REQUEST);
+        }
 
-            List<Long> longList = new ArrayList<>();
+        User thrifter = byEmail.get();
 
-
-            Optional<User> byEmail = userRepository.findByEmail(add.getEmail());
-
-            if(byEmail.isEmpty())
-            {
-                return new ResponseEntity<>("User must be registred to partake in thrift", HttpStatus.BAD_REQUEST);
-            }
-
-            User thrifter = byEmail.get();
-
-            //        checking if user is already part of thrift
-            if(util.is_member(thrifter, thrift))
-            {
-                return new ResponseEntity<>("User already a member", HttpStatus.BAD_REQUEST);
-            }
+        //        checking if user is already part of thrift
+        if(util.is_member(thrifter, thrift))
+        {
+            return new ResponseEntity<>("User already a member", HttpStatus.BAD_REQUEST);
+        }
 
 //        checking if thrifter has reached participation limit
-            Map<String, Object> check = util.chk_user_limit(thrifter);
-            boolean good = (Boolean) check.get("good?");
-            if(good == false)
-            {
-                Map<String, Integer> info = (HashMap) check.get("info");
-                List<Thrift> more_info = (ArrayList) check.get("more_info");
-                return new ResponseEntity<>("User at limit,info incoming", HttpStatus.BAD_REQUEST);
-            }
-
-
-            ThrifterHistory history = new ThrifterHistory();
-            history.setThrift(thrift);
-            history.setUser(thrifter);
-            history.setSlot(add.getSlot());
-            Consent con = Consent.OYELLOW;
-            history.setConsent(con);
-            history = historyRepository.save(history);
-
-            ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(history);
-            dto.setAll(history);
-
-            return ResponseEntity.ok(dto);
-        }
-        else
+        Map<String, Object> check = util.chk_user_limit(thrifter);
+        boolean good = (Boolean) check.get("good?");
+        if(good == false)
         {
-            return new ResponseEntity<>("Only the thrift organizer can add other members",
-                    HttpStatus.BAD_REQUEST);
+            Map<String, Integer> info = (HashMap) check.get("info");
+            List<Thrift> more_info = (ArrayList) check.get("more_info");
+            return new ResponseEntity<>("User at limit,info incoming", HttpStatus.BAD_REQUEST);
         }
+
+
+        ThrifterHistory history = new ThrifterHistory();
+        history.setThrift(thrift);
+        history.setUser(thrifter);
+        history.setSlot(add.getSlot());
+        Consent con = Consent.TYELLOW;
+        history.setConsent(con);
+        history = historyRepository.save(history);
+
+        util.noticePost(user, thrifter, thrift, Action.Add);
+
+        ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(history);
+        dto.setAll(history);
+
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping("/join")
@@ -252,9 +249,11 @@ public class ThriftController
         history.setThrift(thrift);
         history.setUser(thrifter);
         history.setSlot(joint.getSlot());
-        Consent con = Consent.TYELLOW;
+        Consent con = Consent.OYELLOW;
         history.setConsent(con);
         history = historyRepository.save(history);
+
+        util.noticePost(thrifter, thrift.getOrganizer(), thrift, Action.Join);
 
         ThrifterHistoryResponseDto dto = new ThrifterHistoryResponseDto(history);
         dto.setAll(history);
@@ -328,6 +327,7 @@ public class ThriftController
                 else
                 {
                     istory = historyRepository.save(istory);
+                    util.noticePost(user, member, thrift, Action.Accept);
                 }
 
             }
@@ -360,6 +360,7 @@ public class ThriftController
                 else
                 {
                     istory = historyRepository.save(istory);
+                    util.noticePost(user, thrift.getOrganizer(), thrift, Action.Accept);
                 }
             }
         }
@@ -398,11 +399,28 @@ public class ThriftController
             }
             User thrifter = byEmail.get();
 
-            thrift.setCollector(thrifter);
-            thrift = thriftsRepository.save(thrift);
+            if(util.ifCollectorCanCollect(thrift, thrifter) == false)
+            {
+                return new ResponseEntity<>("all slots for user have been set for collection",
+                        HttpStatus.BAD_REQUEST);
+            }
 
-            ThriftResponseDto dto = new ThriftResponseDto(thrift);
-            dto.setAllWeirdAssClasses(thrift);
+            if(util.ifPotCollectorIsSet(thrift, set.getIndex()))
+            {
+                return new ResponseEntity<>("Collector is set for this index already",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            ThePot pot = util.setCollector(thrift, thrifter, set.getIndex());
+
+            if(pot == null)
+            {
+                return new ResponseEntity<>("All available slots have been set",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            ThePotResponseDto dto = new ThePotResponseDto(pot);
+            dto.setAll(pot);
 
             return new ResponseEntity<>(dto, HttpStatus.OK);
         }
@@ -501,25 +519,34 @@ public class ThriftController
         User user = jwtObj.giveUser();
 
         Optional<Thrift> byTicket = thriftsRepository.findByTicket(dto.getTicket());
+
         if(byTicket.isEmpty())
         {
             return new ResponseEntity<>("Thrift cannot be found", HttpStatus.BAD_REQUEST);
         }
 
+        Thrift thrift = byTicket.get();
 
-        if(util.hasStarted(byTicket.get()))
+        if(util.hasStarted(thrift))
         {
             return new ResponseEntity<>("too late,thrift already started",
                     HttpStatus.BAD_REQUEST);
         }
 
-        if(dto.getMemberEmail().equals("none"))
+        if(dto.getMemberEmail().equals("none") && !user.equals(thrift.getOrganizer()))
         {
-            if(util.is_member(user, byTicket.get()))
+            if(util.is_member(user, thrift))
             {
-                ThrifterHistory istory = util.removeMember(byTicket.get(), user);
+                ThrifterHistory istory = util.removeMember(thrift, user);
 
-                return new ResponseEntity<>("Member deleted succesfully", HttpStatus.OK);
+                if(istory == null)
+                {
+                   return  new ResponseEntity<>("Cant perform action", HttpStatus.BAD_REQUEST);
+                }
+
+                util.noticePost(user, thrift.getOrganizer(), thrift, Action.Reject);
+
+                return new ResponseEntity<>(new RemovedResponseDto(istory), HttpStatus.OK);
             }
             else
             {
@@ -528,23 +555,30 @@ public class ThriftController
             }
         }
 
-        if(user.equals(byTicket.get().getOrganizer()))
+        if(user.equals(thrift.getOrganizer()))
         {
             Optional<User> byEmail = userRepository.findByEmail(dto.getMemberEmail());
             if(byEmail.isEmpty())
             {
-                return new ResponseEntity<>("member does not exist",
+                return new ResponseEntity<>("user does not exist",
                         HttpStatus.BAD_REQUEST);
             }
-
-            if(util.is_member(byEmail.get(), byTicket.get()))
+            User thrifter = byEmail.get();
+            if(util.is_member(thrifter, thrift))
             {
-                ThrifterHistory istory = util.removeMember(byTicket.get(), byEmail.get());
+                ThrifterHistory istory = util.removeMember(thrift, thrifter, true);
 
-                return new ResponseEntity<>("Member removed succesfully", HttpStatus.OK);
+                if(istory == null)
+                {
+                    return  new ResponseEntity<>("Cant perform action", HttpStatus.BAD_REQUEST);
+                }
+
+                util.noticePost(user, thrifter, thrift, Action.Remove);
+
+                return new ResponseEntity<>(new RemovedResponseDto(istory), HttpStatus.OK);
             }
 
-            return new ResponseEntity<>("You are not a member of the thrift.",
+            return new ResponseEntity<>("User not a member of the thrift.",
                     HttpStatus.BAD_REQUEST);
         }
 
@@ -578,7 +612,7 @@ public class ThriftController
                     HttpStatus.BAD_REQUEST);
         }
 
-        if(dto.getEmail().equals("none"))
+        if(dto.getEmail().equals("none") && !user.equals(thrift.getOrganizer()))
         {
             if(util.is_member(user, thrift))
             {
@@ -589,6 +623,8 @@ public class ThriftController
                 {
                     isto.setSlot(dto.getSlot());
                     historyRepository.save(isto);
+
+                    util.noticePost(user, thrift.getOrganizer(), thrift, Action.Slot);
 
                     ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(isto);
                     resDto.setAll(isto);
@@ -632,6 +668,8 @@ public class ThriftController
                 {
                     isto.setSlot(dto.getSlot());
                     historyRepository.save(isto);
+
+                    util.noticePost(user, member, thrift, Action.Slot);
 
                     ThrifterHistoryResponseDto resDto = new ThrifterHistoryResponseDto(isto);
                     resDto.setAll(isto);
@@ -721,6 +759,8 @@ public class ThriftController
             }
             thriftsRepository.save(thrift);
 
+            util.noticePost(user, thrift.getOrganizer(), thrift, Action.Pay_thrift);
+
             Thrift_hubResponseDto resDto = new Thrift_hubResponseDto(savedHub);
             resDto.setAll(hub);
 
@@ -807,6 +847,11 @@ public class ThriftController
             thrift.update();
             thriftsRepository.save(thrift);
 
+            util.noticePost(user, thrift.getCollector(), thrift, Action.POT_paid);
+            util.get_members(thrift).forEach((member) -> {
+                util.noticePost(thrift.getOrganizer(), member, thrift, Action.Collect);
+            });
+
             ThePotResponseDto resDto = new ThePotResponseDto(pot);
             resDto.setAll(pot);
 
@@ -822,6 +867,7 @@ public class ThriftController
 
             if(util.is_member(byEmail.get(), thrift))
             {
+//                this seem redundant
                 thrift.setCollector(byEmail.get());
 
                 Transaction trans = new Transaction();
@@ -840,6 +886,12 @@ public class ThriftController
 
                 thrift.update();
                 thriftsRepository.save(thrift);
+
+                util.noticePost(user, thrift.getCollector(), thrift, Action.POT_paid);
+                util.get_members(thrift).forEach((member) -> {
+                    util.noticePost(thrift.getOrganizer(), member, thrift, Action.Collect);
+                });
+
 
                 ThePotResponseDto resDto = new ThePotResponseDto(pot);
                 resDto.setAll(pot);

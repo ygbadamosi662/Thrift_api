@@ -33,18 +33,17 @@ public class Account extends Bank
     @Enumerated(EnumType.STRING)
     private Side side;
 
-    @CreationTimestamp
-    private LocalDateTime created_on;
-
-    @UpdateTimestamp
-    private LocalDateTime updated_on;
-
-
     @OneToOne(mappedBy = "account")
     private User userBen;
 
     @OneToOne(mappedBy = "account")
     private Thrift thriftBen;
+
+    @CreationTimestamp
+    private LocalDateTime created_on;
+
+    @UpdateTimestamp
+    private LocalDateTime updated_on;
 
     public Account(){}
 

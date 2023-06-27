@@ -1,13 +1,17 @@
 package com.example.demo.Dtos;
 
+import com.example.demo.Enums.Stamp;
 import com.example.demo.Model.ThePot;
 import com.example.demo.Model.Thrift;
 import com.example.demo.Model.Transaction;
 import com.example.demo.Model.User;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Setter
 @Getter
@@ -26,6 +30,9 @@ public class ThePotResponseDto extends ResponseDto
 
     private String collection_date;
 
+    @Enumerated(EnumType.STRING)
+    private Stamp stamp;
+
     private TransactionResponseDto transaction;
 
     public ThePotResponseDto(){}
@@ -34,6 +41,7 @@ public class ThePotResponseDto extends ResponseDto
     {
         this.id = pot.getId();
         this.collectionIndex = pot.getCollectionIndex();
+        this.stamp = pot.getStamp();
     }
 
     public void setThrift(Thrift thrift)
@@ -66,9 +74,9 @@ public class ThePotResponseDto extends ResponseDto
         }
     }
 
-    public void setCollection_date(LocalDate date)
+    public void setCollection_date(LocalDateTime date)
     {
-        this.collection_date = this.getStringDate(date);
+        this.collection_date = this.getStringDateTime(date);
     }
 
     public void setAll(ThePot pot)

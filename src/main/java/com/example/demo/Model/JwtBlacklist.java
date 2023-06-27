@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -20,7 +21,10 @@ public class JwtBlacklist
     private String jwt;
 
     @CreationTimestamp
-    private LocalDateTime blacklisted_on;
+    private LocalDateTime created_on;
+
+    @UpdateTimestamp
+    private LocalDateTime updated_on;
 
     public JwtBlacklist(){}
 

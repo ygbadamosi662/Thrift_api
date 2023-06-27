@@ -1,8 +1,7 @@
 package com.example.demo.Utilities;
 
 import com.example.demo.Dtos.ThriftResponseDto;
-import com.example.demo.Enums.Consent;
-import com.example.demo.Enums.Lifecycle;
+import com.example.demo.Enums.*;
 import com.example.demo.Model.*;
 import com.example.demo.Repositories.*;
 import lombok.RequiredArgsConstructor;
@@ -12,12 +11,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Component
 @RequiredArgsConstructor
 public class Utility
 {
+//    find a way to persist all collector for a thrift
     private int multi;
 
     private int longest = 52;
@@ -30,6 +31,12 @@ public class Utility
 
     @Autowired
     private Thrift_hubRepository hubRepo;
+
+    @Autowired
+    private NotificationRepository noticeRepo;
+
+    @Autowired
+    private ThePotRepository potRepo;
 
 //    private final JwtBlacklistRepository jwtBlacklistRepo;
 
@@ -127,12 +134,22 @@ public class Utility
         if(this.duration_chk(thrift) == false)
         {
             System.out.println(this.duration_chk(thrift));
-//            Thrift thrick = new Thrift();
             return null;
         }
 
         thrift.setCollection_amount(this.collectionCalc(thrift));
-        System.out.println(thrift);
+        thriftsRepository.save(thrift);
+
+        if(slot > 1)
+        {
+            this.setPot(thrift, slot);
+        }
+
+        if(slot == 1)
+        {
+            this.setPot(thrift);
+        }
+
         return thrift;
     }
 
@@ -242,52 +259,6 @@ public class Utility
         return (isto.getSlot() * isto.getThrift().getPer_term_amnt()) == amnt;
     }
 
-    public List<ThrifterHistory> consent_hr(User thri)
-    {
-//        to overload consent_hr(User thri, long id)
-//        returns a list of ThrifterHistory
-        return consent_hr(thri, 0);
-    }
-
-    public List<ThrifterHistory> consent_hr(User thri, long thrift_id)
-    {
-//        this functions is called to get the list of thrift that has not been given the green enum
-//        if a second parameter long thrift_id is passed it gives the thrift a green light in thrifter history
-//        it returns a list of ThrifterHistory
-        List<ThrifterHistory> istory = new ArrayList<>();
-
-        if(thrift_id == 0)
-        {
-            List<ThrifterHistory> byThr = historyRepository.findByUser(thri);
-
-            for (int i = 0; i < byThr.size(); i++)
-            {
-                if(!(byThr.get(i).getConsent().name().equals("GREEN")) &&
-                        !(byThr.get(i).getConsent().name().equals("RED")))
-                {
-                    Optional<Thrift> thrift = thriftsRepository.findById(byThr.get(i).getId());
-                    LocalDate now = LocalDate.now();
-                    if(thrift.get().getThrift_start().isBefore(now))
-                    {
-                        historyRepository.delete(byThr.get(i));
-                    }
-                    istory.add(byThr.get(i));
-                }
-            }
-        }
-
-        if(thrift_id > 0)
-        {
-            Consent con = Consent.GREEN;
-            Thrift thrift = thriftsRepository.findById(thrift_id).get();
-            Optional<ThrifterHistory> byTwos = historyRepository.findByThriftAndUser(thrift, thri);
-            ThrifterHistory isto = byTwos.get();
-            isto.setConsent(con);
-            istory.add(isto);
-        }
-
-        return istory;
-    }
 
     public Map<String, Object> chk_user_limit(User user)
     {
@@ -351,7 +322,7 @@ public class Utility
     {
         List<Thrift> thriftList = new ArrayList<>();
 
-        List<ThrifterHistory> all = historyRepository.findByUser(user);
+        List<ThrifterHistory> all = historyRepository.findByUserAndConsent(user, Consent.GREEN);
         if(!(all.isEmpty()))
         {
             for (ThrifterHistory istory: all)
@@ -436,12 +407,11 @@ public class Utility
         return historyRepository.findByUser(user);
     }
 
-    public ThrifterHistory removeMember(Thrift thrift, User member)
+    public ThrifterHistory removeMember(Thrift thrift, User member, boolean org)
     {
         Optional<ThrifterHistory> byThriftAndUser = historyRepository.findByThriftAndUser(thrift, member);
         if(byThriftAndUser.isEmpty())
         {
-            System.out.println("user is not a member");
             return null;
         }
 
@@ -483,15 +453,15 @@ public class Utility
             return null;
         }
 
-//        if rejected by thrifter
-        if(con == Consent.TYELLOW)
+        if(!con.equals(Consent.ORED) && !con.equals(Consent.TRED) && !con.equals(Consent.GODRED))
         {
-            isto.setConsent(Consent.TRED);
-        }
+//            if rejected by thrifter
+            if(org == false)
+            {
+                isto.setConsent(Consent.TRED);
+            }
 
-//        if rejected by organizer
-        if(con == Consent.OYELLOW)
-        {
+//            if rejected by organizer
             isto.setConsent(Consent.ORED);
         }
 
@@ -500,6 +470,11 @@ public class Utility
         thriftsRepository.save(thrift);
 
         return historyRepository.save(isto);
+    }
+
+    public ThrifterHistory removeMember(Thrift thrift, User member)
+    {
+        return this.removeMember(thrift, member, false);
     }
 
     public boolean hasStarted(Thrift thrift)
@@ -517,8 +492,17 @@ public class Utility
     {
         if(this.hasStarted(thrift) && thrift.getCycle().equals(Lifecycle.AWAITING))
         {
-            thrift.setCycle(Lifecycle.RUNNING);
-            thriftsRepository.save(thrift);
+            List<User> members = this.get_members(thrift);
+            User org = thrift.getOrganizer();
+            if(members.size() > 1)
+            {
+                thrift.setCycle(Lifecycle.RUNNING);
+                thriftsRepository.save(thrift);
+
+                members.forEach((member) -> {
+                    this.noticePost(org, member, thrift, Action.Start);
+                });
+            }
         }
     }
 
@@ -534,13 +518,206 @@ public class Utility
             {
                 notGreen.setConsent(Consent.GODRED);
                 historyRepository.save(notGreen);
+                this.noticePost(notGreen.getThrift().getOrganizer(), user, notGreen.getThrift(),
+                        Action.Delete);
             }
         });
 
         deletedThrifts.forEach((deletedThrift) -> {
             deletedThrift.setConsent(Consent.GODRED);
             historyRepository.save(deletedThrift);
+            this.noticePost(deletedThrift.getThrift().getOrganizer(), user, deletedThrift.getThrift(),
+                    Action.Delete);
         });
+    }
+
+    public void noticePost(User sender, User receiver, Thrift subject, Action action)
+    {
+        String note = "";
+        Howfar howfar = Howfar.SENT;
+
+        switch (action)
+        {
+            case Add:
+                note = "Invitation sent";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READANDWRITE, howfar));
+                break;
+
+            case Join:
+                note = "Invitation requested";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READANDWRITE, howfar));
+                break;
+
+            case Accept:
+                note = "Invitation accepted";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Reject:
+                note = "Invitation rejected";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Remove:
+                note = "Removed from thrift";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Quit:
+                note = "Thrifter quit thrift";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Slot:
+                note = "Thrift slots updated";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Delete:
+                note = "Thrift deleted";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Collect:
+                note = "Thrift collected";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case POT_paid:
+                note = "You have been paid the POT";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READANDWRITE, howfar));
+                break;
+
+            case Confirm_POT_Paymemnt:
+                note = "POT payment have been confirmed";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READANDWRITE, howfar));
+                break;
+
+            case Paid_thrift:
+                note = "I paid thrift";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Confirm_paid_thrift:
+                note = "thrift payment confirmed";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Pay_thrift:
+                note = "notice for thrift payment";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case To_Collect:
+                note = "You collect";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            case Next_To_Collect:
+                note = "You are collecting";
+                noticeRepo.save(new Notification(sender, receiver, subject, note,
+                        Permissions.READONLY, howfar));
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    public List<Notification> notifier(User user)
+    {
+        Long disappearAfter = 3l;
+
+        List<Notification> readOnly = noticeRepo.findByUserAndPermissionsAndNotHowfars(user,
+                Permissions.READONLY, Howfar.SEEN, Howfar.DONE);
+        List<Notification> readAndWrite = noticeRepo.findByUserAndPermissionsAndNotHowfar(user,
+                Permissions.READANDWRITE, Howfar.DONE);
+
+        readOnly.forEach((read) -> {
+            if(read.getUpdated_on().plusDays(disappearAfter).isBefore(LocalDateTime.now()) &&
+                    read.getHowfar().equals(Howfar.DELIVERED))
+            {
+                this.updateNotice(read);
+                readOnly.remove(read);
+            }
+        });
+
+        readAndWrite.forEach((readWrite) -> {
+            readOnly.add(readWrite);
+        });
+
+        this.updateNotice(readOnly, Howfar.SENT);
+
+        return readOnly;
+    }
+
+    public void updateNotice(List<Notification> notis, Howfar howfar)
+    {
+//        updates a list of notifications
+        if(howfar == null)
+        {
+            notis.forEach((noti) -> {
+                this.updateNotice(noti);
+            });
+            return;
+        }
+
+        notis.forEach((noti) -> {
+            if(noti.getHowfar().equals(howfar))
+            {
+                this.updateNotice(noti);
+            }
+        });
+    }
+
+    public void updateNotice(List<Notification> notis)
+    {
+        this.updateNotice(notis, null);
+    }
+
+    public void updateNotice(Notification noti)
+    {
+//        updates a singular notification
+        switch (noti.getHowfar())
+        {
+            case SENT:
+                noti.setHowfar(Howfar.DELIVERED);
+                noticeRepo.save(noti);
+                break;
+
+            case DELIVERED:
+                noti.setHowfar(Howfar.SEEN);
+                noticeRepo.save(noti);
+                break;
+
+            case SEEN:
+                if(noti.getPermit().equals(Permissions.READANDWRITE))
+                {
+                    noti.setHowfar(Howfar.DONE);
+                    noticeRepo.save(noti);
+                }
+                break;
+
+            default:
+                break;
+        }
+
+
     }
 
     public double percentage(Long of, Long in)
@@ -586,55 +763,82 @@ public class Utility
         return comp_list;
     }
 
-    public List<ThrifterHistory> consent_note(User user)
+    public void setPot(Thrift thrift)
     {
-        List<ThrifterHistory> consent = this.consent_hr(user);
-        for (ThrifterHistory isto: consent)
-        {
-            if(isto.getThrift().getOrganizer().equals(user))
-            {
-                List<User> members = this.get_members(isto.getThrift(), true);
-                Consent con = Consent.TYELLOW;
-                for (User member: members)
-                {
-                    ThrifterHistory history = historyRepository
-                            .findByThriftAndUser(isto.getThrift(), member).get();
-                    if((history.getConsent().equals(con)) && !(member.equals(user)))
-                    {
-                        consent.add(history);
-                    }
-                }
-            }
-        }
-
-        return consent;
+        potRepo.save(new ThePot(thrift, Stamp.IDLE, thrift.getSlots()));
     }
 
-    public List<Thrift> collector_notes(User user)
+    public void setPot(Thrift thrift, int slots)
     {
-        List<Thrift> thrifts = this.get_thrifts(user);
-
-        for (Thrift thrift: thrifts)
+        int prevThriftSlots = thrift.getSlots() - slots;
+        for (int i = 0; i < slots; i++)
         {
-            if(!(thrift.getCollector().equals(user)))
-            {
-                thrifts.remove(thrift);
-            }
+            prevThriftSlots = prevThriftSlots + 1;
+            potRepo.save(new ThePot(thrift, Stamp.IDLE, prevThriftSlots));
         }
-
-        return thrifts;
     }
 
-    public Map<String, Map> note_manager(User user)
+    public boolean ifPotCollectorIsSet(Thrift thrift, long index)
     {
-        Map<String, Map> all = new HashMap<>();
-        Map<String, List> consent = new HashMap<>();
-        List<ThrifterHistory> consentData = this.consent_note(user);
+        if(potRepo.findByThriftAndCollectionIndex(thrift, index).get().getStamp().equals(Stamp.SET))
+        {
+            return true;
+        }
 
-        consent.put("data", consentData);
+        return false;
+    }
 
-        all.put("Consent", consent);
+    public int getThrifterSlot(User user, Thrift thrift)
+    {
+        return historyRepository.findByThriftAndUser(thrift, user).get().getSlot();
+    }
 
-        return all;
+    public boolean ifCollectorCanCollect(Thrift thrift, User collector)
+    {
+        if(potRepo.findByThriftAndCollector(thrift, collector).size() >=
+                this.getThrifterSlot(collector, thrift))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public ThePot setCollector(Thrift thrift, User collector, long thriftIndex)
+    {
+//        sets collector, returns ThePot with collector set as ThePot.collector
+//        returns null if all possible pot for a thrift have been set
+//
+        Optional<ThePot> ex = potRepo.findByThriftAndCollectionIndexAndStamp(thrift, thriftIndex,
+                Stamp.IDLE);
+
+        if(ex.isEmpty())
+        {
+            return null;
+        }
+
+        ThePot pot = ex.get();
+
+        pot.setCollector(collector);
+        pot.setStamp(Stamp.SET);
+
+        return potRepo.save(pot);
+    }
+
+    public ThePot updatePot(ThePot pot, Stamp stamp)
+    {
+        pot.setStamp(stamp);
+        return potRepo.save(pot);
+    }
+
+    public void thrifterPotMonitor(User user)
+    {
+        List<ThePot> nexts = potRepo.findIfNext(user, Stamp.SET);
+
+        nexts.forEach((pot) -> {
+            pot.setStamp(Stamp.NEXT);
+            potRepo.save(pot);
+            this.noticePost(user, pot.getThrift().getOrganizer(), pot.getThrift(), Action.Next_To_Collect);
+        });
     }
 }

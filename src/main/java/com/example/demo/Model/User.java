@@ -63,6 +63,12 @@ public class User extends Beneficiary implements UserDetails
     @JoinColumn(name = "account_id", referencedColumnName = "acc_id")
     private Account account;
 
+    @OneToMany(mappedBy = "sender")
+    private List<Notification> senderNotification;
+
+    @OneToMany(mappedBy = "receiver")
+    private List<Notification> receiverNotification;
+
     @CreationTimestamp
     private LocalDateTime created_on;
 

@@ -39,6 +39,9 @@ public class Thrift extends Beneficiary
     @OneToMany(mappedBy = "thrift")
     private List<ThrifterHistory> thrifter_history;
 
+    @OneToMany(mappedBy = "subject")
+    private List<Notification> notificationSubject;
+
     @OneToMany(mappedBy = "thrift")
     private List<ThePot> collection;
 
